@@ -21,12 +21,9 @@ var Stacksvis = function (el, options) {
         options: _.extend(defaults, options),
         labels: {
             row: [],
-            columns: [],
-            cluster: [defaults.all_columns]
+            column: [],
+            cluster: [defaults.all_columns, defaults.all_columns, defaults.all_columns]
         },
-        rowlabels: [],
-        columnlabels: [],
-        clusterlabels: [defaults.all_columns, defaults.all_columns],
         clusterproperty: defaults.all_columns,
         data: [],
         columns_by_cluster: {},
@@ -37,9 +34,13 @@ var Stacksvis = function (el, options) {
 
             var models = data || {};
 
-            if (_.has(models, "rowlabels")) this.rowlabels = models.rowlabels || [];
-            if (_.has(models, "columnlabels")) this.columnlabels = models.columnlabels || [];
-            if (_.has(models, "clusterlabels")) this.clusterlabels = models.clusterlabels || [];
+            if (_.has(models, "labels")) {
+                var labels = models.labels;
+                if (_.has(labels, "row")) this.labels.row = labels.row || [];
+                if (_.has(labels, "column")) this.labels.column = labels.column || [];
+                if (_.has(labels, "cluster")) this.labels.cluster = labels.cluster || [];
+            }
+
             if (_.has(models, "data")) this.data = models.data || [];
 
             this._init_cluster();
@@ -58,7 +59,7 @@ var Stacksvis = function (el, options) {
                             return i * ygap;
                         });
 
-                    this.$el.find(".stacksvis-rowlabels li").css({ "padding-bottom": spacers.rows });
+                    this.$el.find(".stacksvis-labels-row li").css({ "padding-bottom": spacers.rows });
                 }
                 if (spacers.columns) {
                     var xgap = this.options.bar_width + spacers.columns;
@@ -74,33 +75,33 @@ var Stacksvis = function (el, options) {
                             return "translate(" + i * spacers.clusters + ",0)";
                         });
 
-                    this.$el.find(".stacksvis-clusterlabels li").css({ "padding-right": spacers.clusters });
+                    this.$el.find(".stacksvis-labels-cluster li").css({ "padding-right": spacers.clusters });
                 }
             }
         },
 
         _render_html: function () {
-            this.$el.append("<div><ul class='stacksvis-rowlabels " + this.options.selectors.rowlabels + "'>rowlabels</ul></div>");
-            this.$el.append("<div><ul class='stacksvis-clusterlabels " + this.options.selectors.clusterlabels + "'>clusterlabels</ul></div>");
-            this.$el.append("<div><ul class='stacksvis-columnlabels " + this.options.selectors.columnlabels + "'>columnlabels</ul></div>");
-            this.$el.append("<div class='stacksvis-heatmap " + this.options.selectors.heatmap + "'>heatmap</div>");
+            this.$el.append("<div><ul class='stacksvis-labels-row " + this.options.selectors.row + "'></ul></div>");
+            this.$el.append("<div><ul class='stacksvis-labels-cluster " + this.options.selectors.cluster + "'></ul></div>");
+            this.$el.append("<div><ul class='stacksvis-labels-column " + this.options.selectors.column + "'></ul></div>");
+            this.$el.append("<div class='stacksvis-heatmap " + this.options.selectors.heatmap + "'></div>");
 
             this.$el.css({
                 "border": "1px dashed black",
                 "height": 600
             });
-            this.$el.find(".stacksvis-rowlabels").css({
+            this.$el.find(".stacksvis-labels-row").css({
                 "border": "2px solid blue",
                 "margin-top": (2 * this.options.cluster_legend_height),
                 "height": 500,
                 "width": this.options["label_width"]
             });
-            this.$el.find(".stacksvis-clusterlabels").parent().css({
+            this.$el.find(".stacksvis-labels-cluster").parent().css({
                 "border": "2px solid red",
                 "height": this.options.cluster_legend_height,
                 "margin-left": this.options["label_width"]
             });
-            this.$el.find(".stacksvis-columnlabels").parent().css({
+            this.$el.find(".stacksvis-labels-column").parent().css({
                 "border": "1px solid darkorange",
                 "height": this.options.cluster_legend_height,
                 "margin-left": this.options["label_width"]
@@ -112,15 +113,15 @@ var Stacksvis = function (el, options) {
         },
 
         _render_labels: function () {
-            var clusterContainers = this.$el.find(".stacksvis-clusterlabels");
+            var clusterContainers = this.$el.find(".stacksvis-labels-cluster");
             clusterContainers.empty();
-            _.each(this.clusterlabels, function (label) {
+            _.each(this.labels.cluster, function (label) {
                 clusterContainers.append("<li>" + label + "</li>")
             });
 
-            var columnContainers = this.$el.find(".stacksvis-columnlabels");
+            var columnContainers = this.$el.find(".stacksvis-labels-column");
             columnContainers.empty();
-            _.each(this.columnlabels, function (label) {
+            _.each(this.labels.column, function (label) {
                 columnContainers.append("<li>" + label + "</li>")
             });
 
@@ -133,9 +134,9 @@ var Stacksvis = function (el, options) {
                 "width": this.options.bar_width + this.options.column_spacing
             });
 
-            var labelsContainer = this.$el.find(".stacksvis-rowlabels");
+            var labelsContainer = this.$el.find(".stacksvis-labels-row");
             labelsContainer.empty();
-            _.each(this.rowlabels, function (rowLabel) {
+            _.each(this.labels.row, function (rowLabel) {
                 labelsContainer.append("<li>" + rowLabel + "</li>")
             });
 
@@ -173,7 +174,7 @@ var Stacksvis = function (el, options) {
             var plotWidth = this._plot_width();
             var plotHeight = this._plot_height();
 
-            var colorscales = _.map(this.rowlabels, function (rowlabel, rowidx) {
+            var colorscales = _.map(this.labels.row, function (rowlabel, rowidx) {
                 return this._get_colorscale_fn(this.data[rowidx]);
             }, this);
 
@@ -185,7 +186,7 @@ var Stacksvis = function (el, options) {
             var xgap = this.options.bar_width + this.options.column_spacing;
             var ygap = this.options.bar_height + this.options.row_spacing;
 
-            var clusters = _.map(this.clusterlabels, function (clusterlabel) {
+            var clusters = _.map(this.labels.cluster, function (clusterlabel) {
                 var columns = this.columns_by_cluster[clusterlabel] || [];
                 return {
                     "label": clusterlabel,
@@ -236,7 +237,7 @@ var Stacksvis = function (el, options) {
                 .attr("height", this.options.bar_height)
                 .append("title")
                 .text(function (d, i, a) {
-                    return _this.rowlabels[i] + "\n" + _this.columnlabels[a] + "\n" + d;
+                    return _this.labels.row[i] + "\n" + _this.labels.column[a] + "\n" + d;
                 });
 
             this.svg_elements.rect_highlight = this.svg_elements.g_column.selectAll("rect.highlight")
@@ -264,9 +265,9 @@ var Stacksvis = function (el, options) {
             var cluster_property = this.clusterproperty || this.options.all_columns;
 
             if (cluster_property == this.options.all_columns) {
-                unsorted_columns = _.map(this.columnlabels, function (column_name, col_idx) {
+                unsorted_columns = _.map(this.labels.column, function (column_name, col_idx) {
                     var column = { "name": column_name.trim(), "cluster": this.options.all_columns, "values": [] };
-                    _.each(this.rowlabels, function (row_label, row_idx) {
+                    _.each(this.labels.row, function (row_label, row_idx) {
                         var dv = this.data[row_idx][col_idx];
                         if (_.has(dv, "trim")) dv = dv.trim();
                         column.values.push(dv);
@@ -274,13 +275,13 @@ var Stacksvis = function (el, options) {
                     return column;
                 }, this);
             } else {
-                unsorted_columns = _.map(this.columnlabels, function (column_name, col_idx) {
-                    var cluster_idx = this.rowlabels.indexOf(cluster_property);
+                unsorted_columns = _.map(this.labels.column, function (column_name, col_idx) {
+                    var cluster_idx = this.labels.row.indexOf(cluster_property);
                     var cluster_value = this.data[cluster_idx][col_idx].trim();
                     if (_.has(cluster_value, "trim")) cluster_value = cluster_value.trim();
 
                     var column = { "name": column_name.trim(), "cluster": cluster_value, "values": [cluster_value] };
-                    _.each(this.rowlabels, function (row_label, row_idx) {
+                    _.each(this.labels.row, function (row_label, row_idx) {
                         var dv = this.data[row_idx][col_idx];
                         if (_.has(dv, "trim")) dv = dv.trim();
                         column.values.push(dv.trim().toLowerCase());
@@ -299,7 +300,7 @@ var Stacksvis = function (el, options) {
         },
 
         _plot_height: function () {
-            return (this.options.bar_height + this.options.row_spacing) * (this.rowlabels.length + 1);
+            return (this.options.bar_height + this.options.row_spacing) * (this.labels.row.length + 1);
         },
 
         _plot_width: function () {
@@ -309,7 +310,7 @@ var Stacksvis = function (el, options) {
             var numberOfColumns = _.reduce(columnCounts, function (memo, num) {
                 return memo + num;
             }, 0);
-            return ((this.options.bar_width + this.options.column_spacing) * numberOfColumns) + (this.options.cluster_spacing * this.clusterlabels.length);
+            return ((this.options.bar_width + this.options.column_spacing) * numberOfColumns) + (this.options.cluster_spacing * this.labels.cluster.length);
         }
     }
 };

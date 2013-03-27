@@ -50,9 +50,11 @@
                 var data = getTextData();
 
                 stacksvis.draw({
-                    // "clusterlabels": [],
-                    "rowlabels": genes,
-                    "columnlabels": smps,
+                    "labels": {
+                        // "cluster": [],
+                        "row": genes,
+                        "column": smps
+                    },
                     "data": data
                 });
             };
@@ -62,9 +64,9 @@
             stacksvis = new Stacksvis($(".vis"), {
                 "clusterproperty": "",
                 "selectors": {
-                    "rowlabels": "span2 nav rowlabels",
-                    "columnlabels": "nav nav-pills columnlabels",
-                    "clusterlabels": "offset4 nav nav-pills clusterlabels",
+                    "row": "span2 nav s-row",
+                    "column": "nav nav-pills s-column",
+                    "cluster": "offset4 nav nav-pills s-cluster",
                     "heatmap": "span9 heatmap"
                 }
             });
@@ -74,27 +76,27 @@
                     return $(x).html();
                 };
 
-                $(".rowlabels li").disableSelection();
-                $(".rowlabels").sortable({
+                $(".s-row li").disableSelection();
+                $(".s-row").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({ "rowlabels": _.map($(".rowlabels li"), extractFn) });
+                        stacksvis.draw({ "labels": { "row": _.map($(".s-row li"), extractFn) } });
                     }
                 });
 
-                $(".columnlabels li").disableSelection();
-                $(".columnlabels").sortable({
+                $(".s-column li").disableSelection();
+                $(".s-column").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({ "columnlabels": _.map($(".columnlabels li"), extractFn) });
+                        stacksvis.draw({ "labels": { "column": _.map($(".s-column li"), extractFn) } });
                     }
                 });
 
-                $(".clusterlabels li").disableSelection();
-                $(".clusterlabels").sortable({
+                $(".s-cluster li").disableSelection();
+                $(".s-cluster").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({ "clusterlabels": _.map($(".clusterlabels li"), extractFn) });
+                        stacksvis.draw({ "labels": { "cluster": _.map($(".s-cluster li"), extractFn) } });
                     }
                 });
             });
