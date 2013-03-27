@@ -284,7 +284,7 @@ var Stacksvis = function (el, options) {
                     _.each(this.labels.row, function (row_label, row_idx) {
                         var dv = this.data[row_idx][col_idx];
                         if (_.has(dv, "trim")) dv = dv.trim();
-                        column.values.push(dv.trim().toLowerCase());
+                        column.values.push(dv);
                     }, this);
                     return column;
                 }, this);
