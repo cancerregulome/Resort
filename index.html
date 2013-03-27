@@ -12,16 +12,11 @@
 
     <meta name="viewport" content="width=device-width">
 
-    <script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
-    <script type="text/javascript"
-            src="http://informatics-apps.systemsbiology.net/jquery-ui-1.10.2.custom/js/jquery-ui-1.10.2.custom.min.js"></script>
-    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
-    <script type="text/javascript" src="http://canvasxpress.org/js/canvasXpress.min.js"></script>
-    <script type="text/javascript"
-            src="http://informatics-apps.systemsbiology.net/bootstrap-2.1.1/js/bootstrap.min.js"></script>
-    <script type="text/javascript"
-            src="http://raw.github.com/documentcloud/underscore/master/underscore-min.js"></script>
-    <script type="text/javascript" src="http://raw.github.com/documentcloud/backbone/master/backbone-min.js"></script>
+    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/jquery-1.9.1/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/jquery-ui-1.10.2.custom/js/jquery-ui-1.10.2.custom.min.js"></script>
+    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/d3js-3.1.4/d3.v3.min.js"></script>
+    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/bootstrap-2.1.1/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/underscore/underscore-min.js"></script>
 
     <script type="text/javascript" src="js/stacksvis.js"></script>
 
@@ -50,7 +45,7 @@
                 var data = getTextData();
 
                 stacksvis.draw({
-                    "labels": {
+                    "dimensions": {
                         // "cluster": [],
                         "row": genes,
                         "column": smps
@@ -71,7 +66,7 @@
                 }
             });
 
-            $(".vis").on("render-labels", function () {
+            $(".vis").on("render-dimensions", function () {
                 var extractFn = function(x) {
                     return $(x).html();
                 };
@@ -80,7 +75,7 @@
                 $(".s-row").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({ "labels": { "row": _.map($(".s-row li"), extractFn) } });
+                        stacksvis.draw({ "dimensions": { "row": _.map($(".s-row li"), extractFn) } });
                     }
                 });
 
@@ -88,7 +83,7 @@
                 $(".s-column").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({ "labels": { "column": _.map($(".s-column li"), extractFn) } });
+                        stacksvis.draw({ "dimensions": { "column": _.map($(".s-column li"), extractFn) } });
                     }
                 });
 
@@ -96,7 +91,7 @@
                 $(".s-cluster").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({ "labels": { "cluster": _.map($(".s-cluster li"), extractFn) } });
+                        stacksvis.draw({ "dimensions": { "cluster": _.map($(".s-cluster li"), extractFn) } });
                     }
                 });
             });
@@ -113,17 +108,17 @@
 
             $(".slider-row-spacing").slider({ value: 0, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.spacing({ "rows": ui.value });
+                    stacksvis.spacing({ "row": ui.value });
                 }
             });
             $(".slider-column-spacing").slider({ value: 0, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.spacing({ "columns": ui.value });
+                    stacksvis.spacing({ "column": ui.value });
                 }
             });
             $(".slider-cluster-spacing").slider({ value: 0, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.spacing({ "clusters": ui.value });
+                    stacksvis.spacing({ "cluster": ui.value });
                 }
             });
         });
