@@ -10,19 +10,27 @@ var Stacksvis = function (el, options) {
         cluster_spacing: 10,
         highlight_bar_height: 7,
         row_labels: [],
-        selectors: {},
-        all_columns: "All Columns"
+        label_width: 100,
+        highlight_fill: "red",
+        all_columns: "All Columns",
+        selectors: {}
     };
 
     return {
         $el: (el),
         options: _.extend(defaults, options),
+        labels: {
+            row: [],
+            columns: [],
+            cluster: [defaults.all_columns]
+        },
         rowlabels: [],
         columnlabels: [],
-        clusterlabels: [defaults.all_columns],
+        clusterlabels: [defaults.all_columns, defaults.all_columns],
         clusterproperty: defaults.all_columns,
         data: [],
         columns_by_cluster: {},
+        svg_elements: {},
 
         draw: function (data) {
             this.$el.empty();
@@ -34,24 +42,97 @@ var Stacksvis = function (el, options) {
             if (_.has(models, "clusterlabels")) this.clusterlabels = models.clusterlabels || [];
             if (_.has(models, "data")) this.data = models.data || [];
 
-            this._init_row_scale();
             this._init_cluster();
             this._render_html();
-            this._render_row_labels();
+            this._render_labels();
             this._render_svg();
         },
 
         spacing: function (spacers) {
-            console.log("spacing(" + JSON.stringify(spacers) + ")");
+            if (spacers) {
+                if (spacers.rows) {
+                    var ygap = this.options.bar_height + spacers.rows;
+
+                    this.svg_elements.g_column.selectAll("rect.bar")
+                        .attr("y", function (d, i) {
+                            return i * ygap;
+                        });
+
+                    this.$el.find(".stacksvis-rowlabels li").css({ "padding-bottom": spacers.rows });
+                }
+                if (spacers.columns) {
+                    var xgap = this.options.bar_width + spacers.columns;
+
+                    this.svg_elements.g_column.selectAll("rect.bar")
+                        .attr("x", function (d, i, a) {
+                            return a * xgap;
+                        });
+                }
+                if (spacers.clusters) {
+                    this.svg_elements.svg.selectAll("g.cluster")
+                        .attr("transform", function (d, i) {
+                            return "translate(" + i * spacers.clusters + ",0)";
+                        });
+
+                    this.$el.find(".stacksvis-clusterlabels li").css({ "padding-right": spacers.clusters });
+                }
+            }
         },
 
         _render_html: function () {
-            var ulCls = "stacksvis-rowlabels " + this.options.selectors.rowlabels;
-            var divCls = "stacksvis-heatmap " + this.options.selectors.heatmap;
-            this.$el.html("<ul class='" + ulCls + "'></ul><div class='" + divCls + "'></div>");
+            this.$el.append("<div><ul class='stacksvis-rowlabels " + this.options.selectors.rowlabels + "'>rowlabels</ul></div>");
+            this.$el.append("<div><ul class='stacksvis-clusterlabels " + this.options.selectors.clusterlabels + "'>clusterlabels</ul></div>");
+            this.$el.append("<div><ul class='stacksvis-columnlabels " + this.options.selectors.columnlabels + "'>columnlabels</ul></div>");
+            this.$el.append("<div class='stacksvis-heatmap " + this.options.selectors.heatmap + "'>heatmap</div>");
+
+            this.$el.css({
+                "border": "1px dashed black",
+                "height": 600
+            });
+            this.$el.find(".stacksvis-rowlabels").css({
+                "border": "2px solid blue",
+                "margin-top": (2 * this.options.cluster_legend_height),
+                "height": 500,
+                "width": this.options["label_width"]
+            });
+            this.$el.find(".stacksvis-clusterlabels").parent().css({
+                "border": "2px solid red",
+                "height": this.options.cluster_legend_height,
+                "margin-left": this.options["label_width"]
+            });
+            this.$el.find(".stacksvis-columnlabels").parent().css({
+                "border": "1px solid darkorange",
+                "height": this.options.cluster_legend_height,
+                "margin-left": this.options["label_width"]
+            });
+            this.$el.find(".stacksvis-heatmap").css({
+                "border": "1px solid black",
+                "height": 500
+            });
         },
 
-        _render_row_labels: function () {
+        _render_labels: function () {
+            var clusterContainers = this.$el.find(".stacksvis-clusterlabels");
+            clusterContainers.empty();
+            _.each(this.clusterlabels, function (label) {
+                clusterContainers.append("<li>" + label + "</li>")
+            });
+
+            var columnContainers = this.$el.find(".stacksvis-columnlabels");
+            columnContainers.empty();
+            _.each(this.columnlabels, function (label) {
+                columnContainers.append("<li>" + label + "</li>")
+            });
+
+            columnContainers.find("li").css({
+                "-webkit-transform": "rotate(-90deg)",
+                "-moz-transform": "rotate(-90deg)",
+                "-ms-transform": "rotate(-90deg)",
+                "-o-transform": "rotate(-90deg)",
+                "font-size": 6,
+                "width": this.options.bar_width + this.options.column_spacing
+            });
+
             var labelsContainer = this.$el.find(".stacksvis-rowlabels");
             labelsContainer.empty();
             _.each(this.rowlabels, function (rowLabel) {
@@ -74,84 +155,91 @@ var Stacksvis = function (el, options) {
                 labelsContainer.css({ "display": this.options["enable_rowlabels"] ? "block" : "none" });
             }
 
-            this.$el.trigger("render-rowlabels");
+            this.$el.trigger("render-labels");
+        },
+
+        _get_colorscale_fn: function (values) {
+            var colorscaleFn = d3.scale.ordinal()
+                .domain(values).range(d3.range(values.length)
+                    .map(d3.scale.linear().domain([0, values.length - 1]).range(["yellow", "green"])
+                        .interpolate(d3.interpolateLab)));
+            return function (cell) {
+                return colorscaleFn(values.indexOf(cell));
+            };
         },
 
         _render_svg: function () {
-            var visEl = this.$el.find(".stacksvis-heatmap");
+            var visEl = this.$el.find(".stacksvis-heatmap").empty();
             var plotWidth = this._plot_width();
             var plotHeight = this._plot_height();
 
-            this.svg = d3.select(visEl[0])
+            var colorscales = _.map(this.rowlabels, function (rowlabel, rowidx) {
+                return this._get_colorscale_fn(this.data[rowidx]);
+            }, this);
+
+            this.svg_elements.svg = d3.select(visEl[0])
                 .append("svg")
                 .attr("width", plotWidth + (2 * this.options.horizontal_padding))
                 .attr("height", plotHeight + (2 * this.options.vertical_padding));
 
-            this.data_area = this.svg.append("g")
-                .attr("transform", "translate(" + this.options.horizontal_padding + "," + (this.options.vertical_padding + this.options.cluster_legend_height) + ")")
-                .attr("width", plotWidth)
-                .attr("height", plotHeight);
+            var xgap = this.options.bar_width + this.options.column_spacing;
+            var ygap = this.options.bar_height + this.options.row_spacing;
 
-            var label_items = _.map(this.clusterlabels, function (d) {
-                var columns = this.columns_by_cluster[d] || [];
-                return { "label": d, "num_samples": this.columns_by_cluster[d].length }
+            var clusters = _.map(this.clusterlabels, function (clusterlabel) {
+                var columns = this.columns_by_cluster[clusterlabel] || [];
+                return {
+                    "label": clusterlabel,
+                    "width": columns.length * xgap,
+                    "values": _.map(columns, function (label, idx) {
+                        return {
+                            "label": label,
+                            "values": this.data[idx]
+                        }
+                    }, this)
+                }
             }, this);
 
-            var _this = this;
-            this.cluster_g = this.data_area.selectAll("g.cluster-info")
-                .data(label_items)
+            this.svg_elements.g_cluster = this.svg_elements.svg.selectAll("g.cluster")
+                .data(clusters)
                 .enter()
                 .insert("g")
-                .attr("class", "cluster-info")
-                .attr("width", function (d) {
-                    return d["num_samples"];
-                });
-
-            this.cluster_g.append("text").attr("y", -5)
-                .text(function (d) {
-                    return d.label;
-                });
-
-            this.cluster_columns = this.cluster_g.selectAll("g.cluster-column")
-                .data(function (cluster_info) {
-                    return _.map(_this.columns_by_cluster[cluster_info.label], function (sample_label, sample_idx) {
-                        return {
-                            s: sample_label,
-                            scale_get_fn: function () {
-                                return _this.cluster_scales[cluster_info.label];
-                            },
-                            values: _this.data[sample_idx]
-                        }
-                    })
-                }, function (d) {
-                    return d.s;
+                .attr("x", function (d, i, a) {
+                    return i * xgap;
                 })
-                .enter()
-                .append("g")
-                .attr("class", "cluster-column");
+                .attr("class", "cluster")
+                .attr("width", function (d) {
+                    return d.width;
+                });
 
-            var first_cluster = d3.select(this.cluster_g[0][0]);
-
-            this.sample_bars = this.cluster_columns.selectAll("rect.sample")
+            this.svg_elements.g_column = this.svg_elements.g_cluster.selectAll("g.column")
                 .data(function (d) {
                     return d.values;
+                })
+                .enter().append("g").attr("class", "column");
+
+            var _this = this;
+            this.svg_elements.rect_bar = this.svg_elements.g_column.selectAll("rect.bar")
+                .data(function (d) {
+                    return d.values;
+                })
+                .enter().append("rect").attr("class", "bar")
+                .style("fill", function (d, i) {
+                    return colorscales[i](d) || "white";
+                })
+                .attr("x", function (d, i, a) {
+                    return a * xgap;
+                })
+                .attr("y", function (d, i) {
+                    return i * ygap;
+                })
+                .attr("width", this.options.bar_width)
+                .attr("height", this.options.bar_height)
+                .append("title")
+                .text(function (d, i, a) {
+                    return _this.rowlabels[i] + "\n" + _this.columnlabels[a] + "\n" + d;
                 });
 
-            this.sample_bars.enter()
-                .append("rect")
-                .attr("class", "sample")
-                .style("fill", this.color_fn)
-                .attr("x", 0)
-                .attr("width", this.bar_width)
-                .attr("height", this.bar_height)
-                .append("svg:title")
-                .attr("class", "sample-label")
-                .text(function (d) {
-                    if (d !== undefined && d.label !== undefined) return d.label;
-                    return "Not defined";
-                });
-
-            this.highlight_markers = this.cluster_columns.selectAll("rect.highlight")
+            this.svg_elements.rect_highlight = this.svg_elements.g_column.selectAll("rect.highlight")
                 .data(function (d) {
                     var mutated = [];
                     _.each(d.values, function (cellvalue, index) {
@@ -164,19 +252,14 @@ var Stacksvis = function (el, options) {
                 .enter()
                 .append("rect")
                 .attr("class", "highlight")
-                .style("fill", this.highlight_fill)
-                .attr("width", this.bar_width)
+                .style("fill", this.options.highlight_fill)
+                .attr("width", this.options.bar_width)
                 .attr("x", 0)
-                .attr("height", this.highlight_bar_height)
+                .attr("height", this.options.highlight_bar_height)
                 .style("stroke-width", 0.0);
-
-//            this._updateVerticalScales();
-//            this._updateHorizontalScales();
-//            this._updateLabelDimensions();
         },
 
         _init_cluster: function () {
-            var _this = this;
             var unsorted_columns = [];
             var cluster_property = this.clusterproperty || this.options.all_columns;
 
@@ -193,8 +276,8 @@ var Stacksvis = function (el, options) {
             } else {
                 unsorted_columns = _.map(this.columnlabels, function (column_name, col_idx) {
                     var cluster_idx = this.rowlabels.indexOf(cluster_property);
-                    var cluster_value = _this.data[cluster_idx][col_idx].trim();
-                    if (_.has(cluster_value, "trim")) cluster_value =  cluster_value.trim();
+                    var cluster_value = this.data[cluster_idx][col_idx].trim();
+                    if (_.has(cluster_value, "trim")) cluster_value = cluster_value.trim();
 
                     var column = { "name": column_name.trim(), "cluster": cluster_value, "values": [cluster_value] };
                     _.each(this.rowlabels, function (row_label, row_idx) {
@@ -213,15 +296,6 @@ var Stacksvis = function (el, options) {
             _.each(grouped_columns, function (values, key) {
                 this.columns_by_cluster[key] = _.pluck(values, "name");
             }, this);
-        },
-
-        _init_row_scale: function () {
-            var domain = _.map(this.rowlabels, function (row_label, idx) {
-                return idx;
-            });
-
-            var maxRowHeight = this.rowlabels.length * (this.options["bar_height"] + this.options["row_spacing"]);
-            this.row_index_scale = d3.scale.ordinal().domain(domain).rangeRoundBands([0, maxRowHeight]);
         },
 
         _plot_height: function () {

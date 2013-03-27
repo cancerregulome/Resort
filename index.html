@@ -37,7 +37,7 @@
                 });
             };
 
-            $(".draw-heatmap").click(function () {
+            drawHeatmap = function () {
                 $(".enter-data").hide();
                 $(".enter-controls").hide();
 
@@ -55,26 +55,46 @@
                     "columnlabels": smps,
                     "data": data
                 });
-            });
+            };
+
+            $(".draw-heatmap").click(drawHeatmap);
 
             stacksvis = new Stacksvis($(".vis"), {
                 "clusterproperty": "",
                 "selectors": {
                     "rowlabels": "span2 nav rowlabels",
+                    "columnlabels": "nav nav-pills columnlabels",
+                    "clusterlabels": "offset4 nav nav-pills clusterlabels",
                     "heatmap": "span9 heatmap"
                 }
             });
 
-            $(".vis").on("render-rowlabels", function () {
+            $(".vis").on("render-labels", function () {
+                var extractFn = function(x) {
+                    return $(x).html();
+                };
+
                 $(".rowlabels li").disableSelection();
                 $(".rowlabels").sortable({
                     "revert": true,
                     "update": function () {
-                        stacksvis.draw({
-                            "rowlabels": _.map($(".rowlabels li"), function (rowlabel) {
-                                return $(rowlabel).html();
-                            })
-                        });
+                        stacksvis.draw({ "rowlabels": _.map($(".rowlabels li"), extractFn) });
+                    }
+                });
+
+                $(".columnlabels li").disableSelection();
+                $(".columnlabels").sortable({
+                    "revert": true,
+                    "update": function () {
+                        stacksvis.draw({ "columnlabels": _.map($(".columnlabels li"), extractFn) });
+                    }
+                });
+
+                $(".clusterlabels li").disableSelection();
+                $(".clusterlabels").sortable({
+                    "revert": true,
+                    "update": function () {
+                        stacksvis.draw({ "clusterlabels": _.map($(".clusterlabels li"), extractFn) });
                     }
                 });
             });
@@ -89,17 +109,17 @@
                 $(".enter-data").hide();
             });
 
-            $(".slider-row-spacing").slider({ value: 10, min: 0, max: 100,
+            $(".slider-row-spacing").slider({ value: 0, min: 0, max: 100,
                 slide: function (event, ui) {
                     stacksvis.spacing({ "rows": ui.value });
                 }
             });
-            $(".slider-column-spacing").slider({ value: 10, min: 0, max: 100,
+            $(".slider-column-spacing").slider({ value: 0, min: 0, max: 100,
                 slide: function (event, ui) {
                     stacksvis.spacing({ "columns": ui.value });
                 }
             });
-            $(".slider-cluster-spacing").slider({ value: 10, min: 0, max: 100,
+            $(".slider-cluster-spacing").slider({ value: 0, min: 0, max: 100,
                 slide: function (event, ui) {
                     stacksvis.spacing({ "clusters": ui.value });
                 }
@@ -117,6 +137,8 @@
                 return doublerow.join(",");
             });
             $("#text_data").val(textdata.join("\n"));
+
+            drawHeatmap();
         });
     </script>
 </head>
