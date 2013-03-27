@@ -1,0 +1,152 @@
+<html>
+<head>
+    <link rel="shortcut icon" href="img/isbfavicon.ico" type="image/x-icon"/>
+    <link rel="stylesheet" type="text/css"
+          href="https://informatics-apps.systemsbiology.net/bootstrap-2.0.4/css/bootstrap.min.css"/>
+    <link rel="stylesheet" type="text/css"
+          href="https://informatics-apps.systemsbiology.net/jquery-ui-1.10.2.custom/css/smoothness/jquery-ui-1.10.2.custom.min.css"/>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Heatmap</title>
+
+    <meta name="viewport" content="width=device-width">
+
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript"
+            src="http://informatics-apps.systemsbiology.net/jquery-ui-1.10.2.custom/js/jquery-ui-1.10.2.custom.min.js"></script>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+    <script type="text/javascript" src="http://canvasxpress.org/js/canvasXpress.min.js"></script>
+    <script type="text/javascript"
+            src="http://informatics-apps.systemsbiology.net/bootstrap-2.1.1/js/bootstrap.min.js"></script>
+    <script type="text/javascript"
+            src="http://raw.github.com/documentcloud/underscore/master/underscore-min.js"></script>
+    <script type="text/javascript" src="http://raw.github.com/documentcloud/backbone/master/backbone-min.js"></script>
+
+    <script type="text/javascript" src="js/stacksvis.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var stacksvis;
+
+            var getTextData = function () {
+                var txt = $("#text_data").val();
+                var rows = d3.csv.parseRows(txt);
+                return _.map(rows, function (row) {
+                    return _.map(row, parseFloat);
+                });
+            };
+
+            $(".draw-heatmap").click(function () {
+                $(".enter-data").hide();
+                $(".enter-controls").hide();
+
+                var genes = _.map(_.range(1, 100), function (i) {
+                    return "Gene" + i;
+                });
+                var smps = _.map(_.range(1, 100), function (i) {
+                    return "Smp" + i;
+                });
+                var data = getTextData();
+
+                stacksvis.draw({
+                    // "clusterlabels": [],
+                    "rowlabels": genes,
+                    "columnlabels": smps,
+                    "data": data
+                });
+            });
+
+            stacksvis = new Stacksvis($(".vis"), {
+                "clusterproperty": "",
+                "selectors": {
+                    "rowlabels": "span2 nav rowlabels",
+                    "heatmap": "span9 heatmap"
+                }
+            });
+
+            $(".vis").on("render-rowlabels", function () {
+                $(".rowlabels li").disableSelection();
+                $(".rowlabels").sortable({
+                    "revert": true,
+                    "update": function () {
+                        stacksvis.draw({
+                            "rowlabels": _.map($(".rowlabels li"), function (rowlabel) {
+                                return $(rowlabel).html();
+                            })
+                        });
+                    }
+                });
+            });
+
+            $(".enter-data-toggle").click(function () {
+                $(".enter-data").toggle("hide");
+                $(".enter-controls").hide();
+            });
+
+            $(".enter-controls-toggle").click(function () {
+                $(".enter-controls").toggle("hide");
+                $(".enter-data").hide();
+            });
+
+            $(".slider-row-spacing").slider({ value: 10, min: 0, max: 100,
+                slide: function (event, ui) {
+                    stacksvis.spacing({ "rows": ui.value });
+                }
+            });
+            $(".slider-column-spacing").slider({ value: 10, min: 0, max: 100,
+                slide: function (event, ui) {
+                    stacksvis.spacing({ "columns": ui.value });
+                }
+            });
+            $(".slider-cluster-spacing").slider({ value: 10, min: 0, max: 100,
+                slide: function (event, ui) {
+                    stacksvis.spacing({ "clusters": ui.value });
+                }
+            });
+        });
+
+        $(document).ready(function () {
+            var doubledata = _.map(_.range(1, 100), function (i) {
+                return _.map(_.range(1, 100), function (i) {
+                    return (Math.floor(Math.random() * 7) + 4);
+                });
+            });
+
+            var textdata = _.map(doubledata, function (doublerow) {
+                return doublerow.join(",");
+            });
+            $("#text_data").val(textdata.join("\n"));
+        });
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="well btn-group">
+        <button class="btn btn-mini draw-heatmap">draw</button>
+        <button class="btn btn-mini enter-data-toggle">data</button>
+        <button class="btn btn-mini enter-controls-toggle">controls</button>
+    </div>
+
+    <div class="well enter-controls hide">
+        <h5>Row Spacing</h5>
+
+        <div class="slider-row-spacing"></div>
+
+        <h5>Column Spacing</h5>
+
+        <div class="slider-column-spacing"></div>
+
+        <h5>Cluster Spacing</h5>
+
+        <div class="slider-cluster-spacing"></div>
+    </div>
+    <div class="well enter-data hide">
+        <label for="text_data"><b>Input Data (csv-format)</b></label>
+        <textarea id="text_data" rows="10" class="input-block-level"></textarea>
+    </div>
+    <div class="row vis"></div>
+</div>
+
+</body>
+</html>
