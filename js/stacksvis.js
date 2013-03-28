@@ -110,11 +110,7 @@ var Stacksvis = function (el, options) {
                 .attr("width", plotWidth + (2 * this.options.horizontal_padding))
                 .attr("height", plotHeight + (2 * this.options.vertical_padding));
 
-            var xgap = this.options.bar_width + this.options.spacing.column;
-
             var rowlabels = this.dimensions.row;
-            var columnlabels = this.dimensions.column;
-
             var clusterIdx = (this.dimensions.clusterBy) ? this.dimensions.row.indexOf(this.dimensions.clusterBy) : -1;
 
             var clusters = _.map(_.keys(this.columns_by_cluster), function (clusterlabel) {
@@ -213,7 +209,6 @@ var Stacksvis = function (el, options) {
                     return "translate(" + i * cluster_spacing + ",0)";
                 });
 
-
             // ROW
             this.$el.find(".stacksvis-row").css({
                 "margin-top": (2 * this.options.cluster_legend_height),
@@ -261,11 +256,9 @@ var Stacksvis = function (el, options) {
         },
 
         _get_colorscale_fn: function (rowlabel, rowidx) {
-            var rowlabel = this.dimensions.row[rowidx];
-            var colorrange = (this.options.colorscales[rowlabel]) ? this.options.colorscales[rowlabel] : ["yellow", "green"];
-
+            var row_colorscale = (this.options.colorscales[rowlabel]) ? this.options.colorscales[rowlabel] : ["yellow", "green"];
             var values = this.data[rowidx];
-            var colorrangeMap = d3.scale.linear().domain([0, values.length - 1]).range(colorrange);
+            var colorrangeMap = d3.scale.linear().domain([0, values.length - 1]).range(row_colorscale);
             var colorrangeFn = d3.range(values.length).map(colorrangeMap);
             var colorscaleFn = d3.scale.ordinal().domain(values).range(colorrangeFn);
             return function (cell) {
