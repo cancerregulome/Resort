@@ -1,0 +1,30 @@
+.vis {
+    border: 1px dashed black;
+    height: 600;
+}
+
+.s-column {
+    /*border: 1px solid darkorange;*/
+}
+
+.s-column li {
+    -webkit-transform: rotate(-90deg);
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    -o-transform: rotate(-90deg);
+    font-size: 6;
+}
+
+.s-row {
+    /*border: 2px solid blue;*/
+    /*height: 500;*/
+}
+
+.s-cluster {
+    /*border: 2px solid red;*/
+}
+
+.s-heatmap {
+    /*border: 1px solid black;*/
+    /*height: 500;*/
+}
