@@ -111,6 +111,11 @@
                     stacksvis.spacing({ "column": ui.value });
                 }
             });
+            $(".slider-cluster-spacing").slider({ value: 0, min: 0, max: 100,
+                slide: function (event, ui) {
+                    stacksvis.spacing({ "cluster": ui.value });
+                }
+            });
             $(".slider-font-size").slider({ value: 8, min: 6, max: 24,
                 slide: function (event, ui) {
                     stacksvis.options.label_fontsize = ui.value;
@@ -162,6 +167,10 @@
                     <h5>Column Spacing</h5>
 
                     <div class="slider-column-spacing"></div>
+
+                    <h5>Cluster Spacing</h5>
+
+                    <div class="slider-cluster-spacing"></div>
 
                     <h5>Font Size</h5>
 
