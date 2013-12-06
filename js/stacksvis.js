@@ -82,8 +82,8 @@ var Stacksvis = function (el, options) {
 
         _render_html: function () {
             this.$el.append("<div><ul class='stacksvis-row " + this.options.selectors.row + "'></ul></div>");
-            this.$el.append("<div><ul class='stacksvis-cluster " + this.options.selectors.cluster + "'></ul></div>");
-            this.$el.append("<div><ul class='stacksvis-column " + this.options.selectors.column + "'></ul></div>");
+//            this.$el.append("<div><ul class='stacksvis-cluster " + this.options.selectors.cluster + "'></ul></div>");
+//            this.$el.append("<div><ul class='stacksvis-column " + this.options.selectors.column + "'></ul></div>");
             this.$el.append("<div class='stacksvis-heatmap " + this.options.selectors.heatmap + "'></div>");
         },
 
@@ -94,8 +94,8 @@ var Stacksvis = function (el, options) {
                     $(container).append("<li>" + label + "</li>")
                 });
             };
-            _append_labels(this.$el.find(".stacksvis-cluster"), _.keys(this.columns_by_cluster));
-            _append_labels(this.$el.find(".stacksvis-column"), this.dimensions.column);
+//            _append_labels(this.$el.find(".stacksvis-cluster"), _.keys(this.columns_by_cluster));
+//            _append_labels(this.$el.find(".stacksvis-column"), this.dimensions.column);
             _append_labels(this.$el.find(".stacksvis-row"), _.without(this.dimensions.row, this.dimensions.clusterBy));
             this.$el.trigger("render-dimensions");
         },
@@ -211,7 +211,7 @@ var Stacksvis = function (el, options) {
 
             // ROW
             this.$el.find(".stacksvis-row").css({
-                "margin-top": (2 * this.options.cluster_legend_height),
+                "margin-top": 0, //  (2 * this.options.cluster_legend_height),
                 "width": this.options["label_width"],
                 "display": this.options.disableRowLabels ? "none" : "block"
             });
