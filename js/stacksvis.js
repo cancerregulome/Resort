@@ -1,58 +1,39 @@
 var Stacksvis = function (el, options) {
     var defaults = {
-        vertical_padding: 30,
-        horizontal_padding: 30,
         bar_height: 20,
-        bar_width: 5,
-        cluster_legend_height: 20,
+        bar_width: 0.5,
         highlight_bar_height: 7,
         highlight_fill: "red",
-        all_columns: "All Columns",
-        spacing: {
-            column: 0,
-            row: 0,
-            cluster: 0
-        },
         colorscales: {},
-        selectors: {}
+        row_selectors: {}
     };
 
     return {
         $el: (el),
         options: _.extend(defaults, options),
-        dimensions: {
-            row: [],
-            column: []
-        },
         data: [],
         columns_by_cluster: {},
-        svg_elements: {},
 
         draw: function (inputs) {
             this.$el.empty();
 
             inputs = inputs || {};
-
-            if (_.has(inputs, "dimensions")) _.extend(this.dimensions, inputs.dimensions);
             if (_.has(inputs, "data")) this.data = inputs.data || [];
 
-            this._render_svg();
-        },
+            var plotWidth = this._plot_width();
+            var bar_width = this.options.bar_width;
+            if (plotWidth <= 300) {
+                plotWidth = 300;
+                bar_width = 4;
+            }
 
-        _render_svg: function () {
-//            var plotWidth = this._plot_width();
-            var plotHeight = this._plot_height();
-            var ygap = this.options.bar_height + this.options.spacing.row;
-            var xgap = this.options.bar_width + this.options.spacing.column;
-
-            _.each(this.options.row_labels, function (row_label, row_index) {
+            _.each(this.options.row_labels, function (row_label) {
                 var row_selector = this.options.row_selectors[row_label];
                 var visEl = $(row_selector).empty();
 
                 var svg = d3.select(visEl[0]).append("svg")
-                    .attr("width", 300)
-//                    .attr("width", plotWidth)
-                    .attr("height", plotHeight);
+                    .attr("width", plotWidth)
+                    .attr("height", this.options.bar_height);
 
                 var clusters = _.map(_.keys(this.options.columns_by_cluster), function (clusterlabel) {
                     var columns = this.options.columns_by_cluster[clusterlabel] || [];
@@ -71,6 +52,7 @@ var Stacksvis = function (el, options) {
                     })
                     .enter().append("g").attr("class", "column");
 
+                var i = 0;
                 g_column.selectAll("rect.bar")
                     .data(function (d) {
                         return [d[row_label]];
@@ -80,7 +62,7 @@ var Stacksvis = function (el, options) {
                     .attr("class", "bar")
                     .append("title")
                     .text(function (d) {
-                        return d.label;
+                        return d.label + "\n" + i++;
                     });
 
 //                var rect_highlight = g_column.selectAll("rect.highlight")
@@ -102,15 +84,11 @@ var Stacksvis = function (el, options) {
 //                    .attr("height", this.options.highlight_bar_height);
 //                g_column.selectAll("rect.highlight").style("fill", this.options.highlight_fill);
 
-                // spacing
                 g_column.selectAll("rect.bar")
-                    .attr("y", function (d, i) {
-                        return i * ygap;
-                    })
                     .attr("x", function (d, i, a) {
-                        return a * xgap;
+                        return a * bar_width;
                     })
-                    .attr("width", this.options.bar_width)
+                    .attr("width", bar_width)
                     .attr("height", this.options.bar_height);
 
                 g_column.selectAll("rect.bar").style("fill", function (d, i) {
@@ -119,18 +97,15 @@ var Stacksvis = function (el, options) {
             }, this);
         },
 
-        _plot_height: function () {
-            return (this.options.bar_height + this.options.spacing.row);
-        },
-
         _plot_width: function () {
-            var columnCounts = _.map(this.columns_by_cluster, function (columns) {
+            var columnCounts = _.map(this.options.columns_by_cluster, function (columns) {
                 return columns.length;
             });
             var numberOfColumns = _.reduce(columnCounts, function (memo, num) {
                 return memo + num;
             }, 0);
-            return ((this.options.bar_width + this.options.spacing.column) * numberOfColumns) + (this.options.spacing.cluster * _.keys(this.columns_by_cluster).length);
+            // TODO : Determine plot and bar width based on a scale
+            return (this.options.bar_width * numberOfColumns);
         },
 
         _get_colorscale_fn: function (rowlabel, rowidx) {
