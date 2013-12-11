@@ -2,10 +2,12 @@ var Stacksvis = function (el, options) {
     var defaults = {
         bar_height: 20,
         bar_width: 0.5,
-        highlight_bar_height: 7,
-        highlight_fill: "red",
         colorscales: {},
-        row_selectors: {}
+        row_selectors: {},
+        highlight: {
+            bar_height: 7,
+            fill: "red"
+        }
     };
 
     return {
@@ -65,25 +67,6 @@ var Stacksvis = function (el, options) {
                         return d.label + "\n" + i++;
                     });
 
-//                var rect_highlight = g_column.selectAll("rect.highlight")
-//                    .data(function (d) {
-//                        var mutated = [];
-//                        _.each(_.values(d), function (cellvalue, index) {
-//                            if (cellvalue !== undefined && cellvalue.isMutated) {
-//                                mutated.push(index);
-//                            }
-//                        });
-//                        return mutated;
-//                    })
-//                    .enter()
-//                    .append("rect")
-//                    .attr("class", "highlight")
-//                    .style("fill", this.options.highlight_fill)
-//                    .attr("width", this.options.bar_width)
-//                    .attr("x", 0)
-//                    .attr("height", this.options.highlight_bar_height);
-//                g_column.selectAll("rect.highlight").style("fill", this.options.highlight_fill);
-
                 g_column.selectAll("rect.bar")
                     .attr("x", function (d, i, a) {
                         return a * bar_width;
@@ -94,7 +77,28 @@ var Stacksvis = function (el, options) {
                 g_column.selectAll("rect.bar").style("fill", function (d, i) {
                     return d.colorscale;
                 });
+
+                this._highlight_bars(g_column);
             }, this);
+        },
+
+        _highlight_bars: function (g_column) {
+            var rect_highlight = g_column.selectAll("rect.highlight")
+                .data(function (d) {
+                    return _.compact(_.map(_.values(d), function (cellvalue, index) {
+                        if (cellvalue !== undefined && cellvalue.isHighlighted) {
+                            return index;
+                        }
+                    }));
+                })
+                .enter()
+                .append("rect")
+                .attr("class", "highlight")
+                .style("fill", this.options.highlight.fill)
+                .attr("width", this.options.bar_width)
+                .attr("x", 0)
+                .attr("height", this.options.highlight.bar_height);
+            g_column.selectAll("rect.highlight").style("fill", this.options.highlight.fill);
         },
 
         _plot_width: function () {
