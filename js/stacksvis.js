@@ -36,27 +36,7 @@ var Stacksvis = function (el, options) {
             if (_.has(inputs, "dimensions")) _.extend(this.dimensions, inputs.dimensions);
             if (_.has(inputs, "data")) this.data = inputs.data || [];
 
-            this._cluster_data();
             this._render_svg();
-        },
-
-        // private methods
-        _cluster_data: function () {
-            var unsorted_columns = _.map(this.dimensions.column, function (column_name, col_idx) {
-                var column = { "name": column_name.trim(), "cluster": this.options.all_columns, "values": [] };
-                _.each(this.dimensions.row, function (row_label) {
-                    column.values.push(this.data[column_name][row_label]);
-                }, this);
-                return column;
-            }, this);
-
-            var sorted_columns = _.sortBy(unsorted_columns, "values");
-            var grouped_columns = _.groupBy(sorted_columns, "cluster");
-
-            this.columns_by_cluster = {};
-            _.each(grouped_columns, function (values, key) {
-                this.columns_by_cluster[key] = _.pluck(values, "name");
-            }, this);
         },
 
         _render_svg: function () {
@@ -74,8 +54,8 @@ var Stacksvis = function (el, options) {
 //                    .attr("width", plotWidth)
                     .attr("height", plotHeight);
 
-                var clusters = _.map(_.keys(this.columns_by_cluster), function (clusterlabel) {
-                    var columns = this.columns_by_cluster[clusterlabel] || [];
+                var clusters = _.map(_.keys(this.options.columns_by_cluster), function (clusterlabel) {
+                    var columns = this.options.columns_by_cluster[clusterlabel] || [];
                     return {
                         "cluster_values": _.compact(_.map(columns, function (column) {
                             return this.data[column]
