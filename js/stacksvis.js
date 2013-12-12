@@ -17,8 +17,6 @@ var Stacksvis = function (el, options) {
         columns_by_cluster: {},
 
         draw: function (inputs) {
-            this.$el.empty();
-
             inputs = inputs || {};
             if (_.has(inputs, "data")) this.data = inputs.data || [];
 
