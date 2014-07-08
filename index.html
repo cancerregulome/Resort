@@ -1,7 +1,7 @@
 <html>
 <head>
     <link rel="stylesheet" type="text/css" href="http://informatics-apps.systemsbiology.net/bootstrap-2.0.4/css/bootstrap.min.css"/>
-    <link rel="stylesheet" type="text/css" href="http://informatics-apps.systemsbiology.net/jquery-ui-1.10.2.custom/css/smoothness/jquery-ui-1.10.2.custom.min.css"/>
+    <link rel="stylesheet" type="text/css" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css"/>
 
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -9,11 +9,12 @@
 
     <meta name="viewport" content="width=device-width">
 
-    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/jquery-1.9.1/jquery-1.9.1.min.js"></script>
-    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/jquery-ui-1.10.2.custom/js/jquery-ui-1.10.2.custom.min.js"></script>
-    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/d3js-3.1.4/d3.v3.min.js"></script>
+    <script type="text/javascript" src="//code.jquery.com/jquery-2.1.1.js"></script>
+    <script type="text/javascript" src="//code.jquery.com/ui/1.11.0/jquery-ui.js"></script>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
     <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/bootstrap-2.1.1/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/underscore/underscore-min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+    <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
 
     <script type="text/javascript" src="js/stacksvis.js"></script>
 
@@ -21,38 +22,24 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
-            stacksvis = new Stacksvis($(".vis"), {
-                "selectors": {
-                    "row": "span2 nav s-row",
-                    "column": "nav nav-pills s-column",
-                    "cluster": "offset4 nav nav-pills s-cluster",
-                    "heatmap": "span9 s-heatmap"
-                },
-                "colorscales": {
-                    "Row_3": ["lightblue", "blue"]
-                }
-            });
-            $(".vis").on("render-dimensions", enableDraggable);
-
             activateVisControls();
             loadTestData();
             drawHeatmap();
         });
 
+
+
         drawHeatmap = function () {
             var txt = $("#text_data").val();
-            var rows = d3.csv.parseRows(txt);
-            var data = _.map(rows, function (row) {
+            var data = d3.csv.parseRows(txt, function (row) {
                 return _.map(row, parseFloat);
             });
-
-            var rowlabels = _.map(_.range(0, rows.length), function (i) {
+            
+            var rowlabels = _.map(_.range(0, data.length), function (i) {
                 return "Row_" + i;
             });
 
-            var columnlabels = _.map(_.range(0, _.first(rows).length), function (i) {
-                return "Col_" + i;
-            });
+            var columnlabels = _.range(0, _.first(data).length);
 
             rowlabels.push("EVEN_or_ODD");
             data.push(_.map(columnlabels, function (label, idx) {
@@ -60,13 +47,20 @@
             }));
 
 
-            stacksvis.draw({
-                "dimensions": {
-                    "row": rowlabels,
-                    "column": columnlabels
-                },
-                "data": data
+            var stacksvis = new Stacksvis({
+                "colorscale" : colorbrewer['Set3'][8],
+                "row_labels": rowlabels,
+                "columns_by_cluster" : columnlabels,
+                // "plot_width" : 400,
+                "bar_width" : 5,
+                "bar_height" : 20
             });
+            $(".vis").on("render-dimensions", enableDraggable);
+
+            var parentEl = d3.select('.vis').node();
+            
+            stacksvis.draw(parentEl, data);
+            
         };
 
         loadTestData = function () {
