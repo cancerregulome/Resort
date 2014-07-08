@@ -9,90 +9,102 @@
         });
     } else {
         // RequireJS isn't being used. Assume underscore and d3 are loaded in <script> tags
-        factory($, _, d3);
+        this.Stacksvis = factory($, _, d3);
     }
 }(this, function ($, _, d3) {
+    'strict mode';
 
-    var Stacksvis = function (el, options) {
+    var Stacksvis = function (options) {
         var defaults = {
             bar_height: 20,
+            plot_width: null,
             bar_width: 0.5,
-            colorscales: {},
-            row_selectors: {},
+
+            colorscale: [],
             highlight: {
                 bar_height: 7,
                 fill: "red"
             }
         };
 
+        options = _.extend(defaults, options);
+
+        var drawRow = function (data, idx) {
+                
+                var bar_width = options.bar_width;
+                var plotWidth;
+                var rowData = data || [];
+
+                if (options.plot_width !== null) {
+                    plotWidth = options.plot_width;
+                    bar_width = options.plot_width / rowData.length;
+                } else {
+                    plotWidth = bar_width * rowData.length;
+                }
+                //clustered column order is defined.
+                // iterative through each cluster value
+                var clusters = _.map(options.columns_by_cluster, function (clusterLabel, clusterValue) {
+                    //initialize value
+                    var columns = clusterValue || [];
+                    return {
+                        "cluster_values": _.filter(rowData, function (val, index) {
+                            return index === clusterValue;
+                        }, this)
+                    };
+                }, this);
+
+                var visEl = d3.select(this);
+
+                visEl.selectAll("*").remove();
+
+                var canvasSelection = visEl.append('canvas')
+                    .attr("width", plotWidth)
+                    .attr("height", options.bar_height);
+
+                var canvas = canvasSelection.node();
+                var context = canvas.getContext('2d');
+                context.fillStyle = '#FFFFFF';
+                context.fillRect(0, 0, plotWidth, options.bar_height);
+                var currentPos = 0;
+
+                var colorscale_fn = get_colorscale_fn(data);
+                
+                _.forEach(clusters, function(cluster, index, array) {
+                    context.fillStyle = colorscale_fn(cluster.cluster_values[0]);
+                    context.fillRect( currentPos, 0, cluster.cluster_values.length * bar_width, options.bar_height );
+                    currentPos = currentPos + cluster.cluster_values.length * bar_width;
+                }, this);
+
+                // this._highlight_bars(g_column);
+            };
+
+            var get_colorscale_fn = function (data) {
+                var row_colorscale = (options.colorscale &&  options.colorscale.length > 1) ? options.colorscale : ["yellow", "blue"];
+                // identify unique categorical values
+                var values = _.uniq(data);
+                  //map categorical values to static array of colors...
+                var colorscaleFn = d3.scale.ordinal().domain(values).range(row_colorscale);
+                return function (val) {
+                    return colorscaleFn(values.indexOf(val));
+                };
+            };
+
         return {
-            $el: (el),
-            options: _.extend(defaults, options),
             data: [],
             columns_by_cluster: {},
 
-            draw: function (inputs) {
-                inputs = inputs || {};
-                if (_.has(inputs, "data")) this.data = inputs.data || [];
+            draw : function(el, data) {
+                var self = this;
+                var parentEl = d3.select(el);
 
-                var plotWidth = this._plot_width();
-                var bar_width = this.options.bar_width;
-                if (plotWidth <= 300) {
-                    plotWidth = 300;
-                    bar_width = 4;
-                }
-
-                _.each(this.options.row_labels, function (row_label) {
-                    var row_selector = this.options.row_selectors[row_label];
-                    var visEl = $(row_selector).empty();
-
-                    var svg = d3.select(visEl[0]).append("svg")
-                        .attr("width", plotWidth)
-                        .attr("height", this.options.bar_height);
-
-                    var clusters = _.map(_.keys(this.options.columns_by_cluster), function (clusterlabel) {
-                        var columns = this.options.columns_by_cluster[clusterlabel] || [];
-                        return {
-                            "cluster_values": _.compact(_.map(columns, function (column) {
-                                return this.data[column]
-                            }, this))
-                        }
-                    }, this);
-
-                    var g_cluster = svg.selectAll("g.cluster").data(clusters).enter().insert("g").attr("class", "cluster");
-
-                    var g_column = g_cluster.selectAll("g.column")
-                        .data(function (d) {
-                            return d.cluster_values;
-                        })
-                        .enter().append("g").attr("class", "column");
-
-                    var i = 0;
-                    g_column.selectAll("rect.bar")
-                        .data(function (d) {
-                            return [d[row_label]];
-                        })
-                        .enter()
-                        .append("rect")
-                        .attr("class", "bar")
-                        .append("title")
-                        .text(function (d) {
-                            return d.label + "\n" + i++;
-                        });
-
-                    g_column.selectAll("rect.bar")
-                        .attr("x", function (d, i, a) {
-                            return a * bar_width;
-                        })
-                        .attr("width", bar_width)
-                        .attr("height", this.options.bar_height);
-
-                    g_column.selectAll("rect.bar").style("fill", function (d, i) {
-                        return d.colorscale;
-                    });
-
-                    this._highlight_bars(g_column);
-                }, this);
+                var rows = parentEl
+                .selectAll('.s-row')
+                .data(data)
+                .enter()
+                .append('div')
+                .attr('class','s-row');
+                
+                rows.each(drawRow);
             },
 
             _highlight_bars: function (g_column) {
@@ -107,37 +119,24 @@
                     .enter()
                     .append("rect")
                     .attr("class", "highlight")
-                    .style("fill", this.options.highlight.fill)
-                    .attr("width", this.options.bar_width)
+                    .style("fill", options.highlight.fill)
+                    .attr("width", options.bar_width)
                     .attr("x", 0)
-                    .attr("height", this.options.highlight.bar_height);
-                g_column.selectAll("rect.highlight").style("fill", this.options.highlight.fill);
+                    .attr("height", options.highlight.bar_height);
+                g_column.selectAll("rect.highlight").style("fill", options.highlight.fill);
             },
 
             _plot_width: function () {
-                var columnCounts = _.map(this.options.columns_by_cluster, function (columns) {
+                var columnCounts = _.map(options.columns_by_cluster, function (columns) {
                     return columns.length;
                 });
                 var numberOfColumns = _.reduce(columnCounts, function (memo, num) {
                     return memo + num;
                 }, 0);
                 // TODO : Determine plot and bar width based on a scale
-                return (this.options.bar_width * numberOfColumns);
-            },
-
-            _get_colorscale_fn: function (rowlabel, rowidx) {
-                var row_colorscale = (this.options.colorscales[rowlabel]) ? this.options.colorscales[rowlabel] : ["yellow", "green"];
-                var values = _.map(this.data[rowidx], function (item) {
-                    return item.value;
-                });
-                var colorrangeMap = d3.scale.linear().domain([0, values.length - 1]).range(row_colorscale);
-                var colorrangeFn = d3.range(values.length).map(colorrangeMap);
-                var colorscaleFn = d3.scale.ordinal().domain(values).range(colorrangeFn);
-                return function (cell) {
-                    return colorscaleFn(values.indexOf(cell.value));
-                };
+                return (options.bar_width * numberOfColumns);
             }
-        }
+        };
     };
 
     return Stacksvis;
