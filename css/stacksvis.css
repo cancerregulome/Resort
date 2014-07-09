@@ -1,6 +1,8 @@
 .vis {
     border: 1px dashed black;
     height: 600;
+    padding-top:10px;
+    padding-left: 30px;
 }
 
 .s-column {
@@ -8,6 +10,7 @@
 }
 
 .s-column li {
+    -transform: rotate(-90deg);
     -webkit-transform: rotate(-90deg);
     -moz-transform: rotate(-90deg);
     -ms-transform: rotate(-90deg);
@@ -19,7 +22,7 @@
     /*border: 2px solid blue;*/
     /*height: 500;*/
     margin-bottom: 8px;
-    
+
 }
 
 .s-cluster {
