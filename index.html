@@ -26,6 +26,7 @@
             loadTestData();
             drawHeatmap();
         });
+        var stacksvis;
 
 
 
@@ -47,7 +48,7 @@
             }));
 
 
-            var stacksvis = new Stacksvis({
+            stacksvis = new Stacksvis({
                 "colorscale" : colorbrewer['Set3'][8],
                 "row_labels": rowlabels,
                 "columns_by_cluster" : columnlabels,
@@ -82,11 +83,7 @@
         activateVisControls = function () {
             $(".draw-heatmap").click(drawHeatmap);
             $(".cluster-even-odd").click(function () {
-                stacksvis.draw({
-                    "dimensions": {
-                        "clusterBy": "EVEN_or_ODD"
-                    }
-                });
+                stacksvis.clusterByRows([2,3]);
             });
             $(".draw-heatmap").click(function () {
                 $(".nav-tabs a:first").tab("show");
