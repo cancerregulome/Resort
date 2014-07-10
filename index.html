@@ -11,7 +11,7 @@
 
     <script type="text/javascript" src="//code.jquery.com/jquery-2.1.1.js"></script>
     <script type="text/javascript" src="//code.jquery.com/ui/1.11.0/jquery-ui.js"></script>
-    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
     <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/bootstrap-2.1.1/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
     <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
@@ -22,13 +22,17 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
+            createRows(20);
             activateVisControls();
             loadTestData();
             drawHeatmap();
         });
         var stacksvis;
 
-
+        var bar_padding = 0,
+            bar_height = 10,
+            bar_width = 8,
+            group_padding = 10;
 
         drawHeatmap = function () {
             var txt = $("#text_data").val();
@@ -42,19 +46,33 @@
 
             var columnlabels = _.range(0, _.first(data).length);
 
-            rowlabels.push("EVEN_or_ODD");
-            data.push(_.map(columnlabels, function (label, idx) {
+            rowlabels.unshift("EVEN_or_ODD");
+            data.unshift(_.map(columnlabels, function (label, idx) {
                 return (idx % 2 == 0) ? "EVEN" : "ODD";
             }));
 
 
             stacksvis = new Stacksvis({
-                "colorscale" : colorbrewer['Set3'][8],
+                "colormap" : {
+                    "EVEN" : colorbrewer['Set3'][12][0],
+                    "ODD" : colorbrewer['Set3'][12][1],
+                    "4" : colorbrewer['Set3'][12][2],
+                    "5" : colorbrewer['Set3'][12][3],
+                    "6" : colorbrewer['Set3'][12][4],
+                    "7" : colorbrewer['Set3'][12][5],
+                    "8" : colorbrewer['Set3'][12][6],
+                    "9" : colorbrewer['Set3'][12][7],
+                    "10" : colorbrewer['Set3'][12][8]
+                },
+                "value_order" : [4,5,6,7,8,9,10,"EVEN","ODD"],
                 "row_labels": rowlabels,
                 "columns_by_cluster" : columnlabels,
                 // "plot_width" : 400,
-                "bar_width" : 5,
-                "bar_height" : 20
+                "bar_width" : bar_width,
+                "bar_height" : bar_height,
+                "bar_padding" : bar_padding,
+                "group_padding" : group_padding,
+                "row_selector" : ".s-row"
             });
             $(".vis").on("render-dimensions", enableDraggable);
 
@@ -65,8 +83,8 @@
         };
 
         loadTestData = function () {
-            var rows = 20;
-            var cols = 100;
+            var rows = 40;
+            var cols = 400;
             var doubledata = _.map(_.range(1, rows), function (i) {
                 return _.map(_.range(1, cols), function (i) {
                     return (Math.floor(Math.random() * 7) + 4);
@@ -83,33 +101,49 @@
         activateVisControls = function () {
             $(".draw-heatmap").click(drawHeatmap);
             $(".cluster-even-odd").click(function () {
-                stacksvis.clusterByRows([2,3]);
+                var rowList = $('#group-by-list').val();
+                if (rowList.length < 1) { return; }
+                var rowIndices = _.chain(rowList.split(','))
+                                    .invoke('trim')
+                                    .map(Number)
+                                    .filter(function(val) { return !_.isNaN(val); })
+                                    .value();
+                stacksvis.groupByRows(rowIndices);
             });
             $(".draw-heatmap").click(function () {
                 $(".nav-tabs a:first").tab("show");
             });
 
-            $(".slider-row-spacing").slider({ value: 0, min: 0, max: 100,
+            $(".slider-row-height").slider({ value: bar_height, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.spacing({ "row": ui.value });
+                    stacksvis.setOptions({ "bar_height": ui.value });
                 }
             });
-            $(".slider-column-spacing").slider({ value: 0, min: 0, max: 100,
+            $(".slider-bar-width").slider({ value: bar_width, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.spacing({ "column": ui.value });
+                    stacksvis.setOptions({ "bar_width": ui.value });
                 }
             });
-            $(".slider-cluster-spacing").slider({ value: 0, min: 0, max: 100,
+            $(".slider-column-spacing").slider({ value: bar_padding, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.spacing({ "cluster": ui.value });
+                    stacksvis.setOptions({ "bar_padding": ui.value });
                 }
             });
-            $(".slider-font-size").slider({ value: 8, min: 6, max: 24,
+            $(".slider-group-spacing").slider({ value: group_padding, min: 0, max: 100,
                 slide: function (event, ui) {
-                    stacksvis.options.label_fontsize = ui.value;
-                    stacksvis.draw({});
+                    stacksvis.setOptions({ "group_padding": ui.value });
                 }
             });
+        };
+
+        createRows = function(number) {
+
+        d3
+            .select('.vis')
+            .selectAll('.s-row')
+            .data(_.range(number))
+        .enter()
+            .append('div').attr('class','s-row').style('color','#FFF');
         };
 
         enableDraggable = function () {
@@ -136,33 +170,38 @@
     </script>
 </head>
 <body>
-<div class="container">
+<div class="">
     <ul class="nav nav-tabs">
         <li class="active"><a href="#tab-vis" data-toggle="tab">Heatmap</a></li>
         <li><a href="#tab-data" data-toggle="tab">Input Data</a></li>
     </ul>
     <div class="tab-content">
         <div id="tab-vis" class="tab-pane active">
-            <button class="btn btn-mini cluster-even-odd">Cluster Even/Odd</button>
+            <button class="btn btn-mini cluster-even-odd">Group Samples</button>
             <button class="btn btn-mini" data-toggle="collapse" data-target="#enter-controls">Controls</button>
 
             <div id="enter-controls" class="collapse">
                 <div class="well">
-                    <h5>Row Spacing</h5>
+                    <h5>Row Height</h5>
 
-                    <div class="slider-row-spacing"></div>
+                    <div class="slider-row-height"></div>
+
+                    <h5>Column Width</h5>
+
+                    <div class="slider-bar-width"></div>
 
                     <h5>Column Spacing</h5>
 
                     <div class="slider-column-spacing"></div>
 
-                    <h5>Cluster Spacing</h5>
+                    <h5>Group Spacing</h5>
 
-                    <div class="slider-cluster-spacing"></div>
+                    <div class="slider-group-spacing"></div>
 
-                    <h5>Font Size</h5>
+                    <h5>Group-by Row Indices</h5>
 
-                    <div class="slider-font-size"></div>
+                    <input type="text" id="group-by-list" placeholder="0, 1" value="0, 1">
+
                 </div>
             </div>
             <div class="row vis"></div>
