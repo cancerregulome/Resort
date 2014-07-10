@@ -17,15 +17,24 @@
     var Stacksvis = function (options) {
         var defaults = {
             bar_height: 20,
-            plot_width: null,
             bar_width: 0.5,
+            bar_padding: null,
+
+            group_padding : 0,
+
+            plot_width: null,
+            
             row_labels: [],
 
             colorscale: [],
+            colormap : {},
             highlight: {
                 bar_height: 7,
                 fill: "red"
-            }
+            },
+
+            row_selector : '.s-row',
+            enable_brush : false
         };
 
         var config = _.extend(defaults, options);
@@ -35,6 +44,9 @@
         var sortRows, columnOrder;
 
         var selectedColumns, highlightRegion;
+        var colorscale_fn;
+
+        var groupMembership = [];
 
         function PrimitiveBrush(context) {
             if (!(context instanceof CanvasRenderingContext2D)) {
@@ -62,9 +74,8 @@
          * @param  {MouseEvent} event
          */
         PrimitiveBrush.prototype.start = function (event) {
-            var x=event.clientX-offsetX;
-            var y=event.clientY-offsetY;
-            this.workingStrokes=[{x:x,y:y}];
+            var x=event.layerX;
+            this.workingStrokes=[{x:x}];
             this.strokes.push(this.workingStrokes);
             this.lastLength=1;
             this.isTouching = true;
@@ -76,9 +87,8 @@
          */
         PrimitiveBrush.prototype.move = function (event) {
             if(!this.isTouching){return;}
-            var x=event.clientX-offsetX;
-            var y=event.clientY-offsetY;
-            this.workingStrokes.push({x:x,y:y});
+            var x=event.layerX;
+            this.workingStrokes.push({x:x});
         };
 
         /**
@@ -105,18 +115,16 @@
 
             var pt0 = this.workingStrokes[startIndex];
 
-            this.ctx.beginPath();
-            this.ctx.moveTo(pt0.x,pt0.y);
+            this.ctx.strokeStyle = "rgba(180,180,180,1.0)";
+            this.ctx.filleStyle = "none";
 
             for(var j = startIndex; j < this.lastLength; j++){
 
                 var pt=this.workingStrokes[j];
 
-                this.ctx.lineTo(pt.x,pt.y);
+                this.ctx.strokeRect(pt0.x, -1,  pt.x - pt0.x, bar_height+1);
 
             }
-
-            this.ctx.stroke();
 
         };
 
@@ -137,11 +145,15 @@
                 var plotWidth;
                 var rowData = data || [];
 
+                var bar_padding = config.bar_padding || 0;
+
+                var groupPads = groupMembership.length - 1;
+
                 if (config.plot_width !== null) {
                     plotWidth = config.plot_width;
-                    bar_width = config.plot_width / rowData.length;
+                    bar_width = (config.plot_width / rowData.length) - bar_padding - (group_padding * groupPads);
                 } else {
-                    plotWidth = bar_width * rowData.length;
+                    plotWidth = (groupPads * group_padding) + ((bar_width + bar_padding) * rowData.length);
                 }
 
                 var visEl = d3.select(this);
@@ -157,49 +169,59 @@
                 context.fillStyle = '#FFFFFF';
                 context.fillRect(0, 0, plotWidth, config.bar_height);
 
-                var colorscale_fn = get_colorscale_fn(data);
                 var position;
 
                 var extraPosition = columnOrder.length;
 
-                _.forEach(data, function(val, index, array) {
-                    position = (columnOrder.indexOf(index) || extraPosition++) * bar_width;
-                    context.fillStyle = colorscale_fn(val);
-                    context.fillRect( position, 0, bar_width, config.bar_height );
-                }, this);
+                d3.timer( function() {
+                    _.forEach(columnOrder, function(val, index, array) {
+                        position = (index * (bar_width + bar_padding));
+                        if (groupMembership[val]) {
+                            position += (groupMembership[val] * config.group_padding);
+                        }
+                        context.fillStyle = colorscale_fn(data[val]);
+                        context.fillRect( position, 0, bar_width, config.bar_height );
+                    }, this);
+                    return true;
+                });
 
-                initializeBrush(canvas);
+                if (config.enable_brush) { initializeBrush(canvas); }
 
             };
 
-            var highlightRowRegion = function() {
-                var canvas = d3.select(this).select('canvas').node();
-                if (canvas === undefined) { return; }
-
-                var start = highlightRegion[0];
-                var width = highlightRegion[1] - start;
-                
-                var context = canvas.getContext('2d');
-                context.fillStyle='none';
-                context.strokeStyle='#000000';
-                context.strokeWidth='1px';
-                context.strokeRect(start * bar_width, 0, width * bar_width, config.bar_height);
+            var globallyUniqueValues = function(matrix) {
+                return _.reduce(matrix, function(previous, current){
+                    return _.union(previous, _.uniq(current));
+                }, []);
             };
 
-            var get_colorscale_fn = function (data) {
+            var get_colorscale_fn = function (matrix) {
+                var colorscaleFn;
+                if (config.colormap) {
+                    colorscaleFn = d3.scale.ordinal().domain(_.keys(config.colormap)).range(_.values(config.colormap));
+                }
+                else {
                 var row_colorscale = (config.colorscale &&  config.colorscale.length > 1) ? config.colorscale : ["yellow", "blue"];
                 // identify unique categorical values
-                var values = _.uniq(data);
+                var values = globallyUniqueValues(matrix);
                   //map categorical values to static array of colors...
-                var colorscaleFn = d3.scale.ordinal().domain(values).range(row_colorscale);
+
+                    colorscaleFn = d3.scale.ordinal().domain(values).range(row_colorscale);
+                }
                 return function (val) {
-                    return colorscaleFn(values.indexOf(val));
+                    return colorscaleFn(val);
                 };
+            };
+
+
+            var _setOptions = function(options) {
+                config = _.extend(config,options);
+                this.redraw();
             };
 
         return {
             // data: [],
-            // columns_by_cluster: {},
+            // columns_by_groups: {},
 
             draw : function(el, matrix) {
                 var self = this;
@@ -219,27 +241,38 @@
                             return [];
                         }
                     });
+                    colorscale_fn = get_colorscale_fn(data);
                 }
+
                 var longest = data.reduce(function(memo,row) { return _.max([memo,row.length]); }, 0);
                 columnOrder =  columnOrder || _.range(0, longest);
 
                 var rows = parentEl
-                        .selectAll('.s-row')
+                        .selectAll(config.row_selector)
                         .data(data);
 
-                    rows
-                        .enter()
-                        .append('div')
-                        .attr('class','s-row');
+                var tagFn = function(selector) { };
+                if (config.row_selector.indexOf('.')===0) {
+                    tagFn = function(selector) {
+                        selector.classed(config.row_selector.slice(1), true);
+                    };
+                }
+
+                rows
+                    .enter()
+                    .append('div')
+                    .call(tagFn);
                 
                 rows.each(drawRow);
             },
 
             redraw : function() {
-                this.draw( );
+                this.draw();
             },
 
-           clusterByRows: function(rows) {
+            setOptions : _.throttle(_setOptions, 40),
+
+            groupByRows: function(rows) {
                 
                 var rowData, values, cast = String;
                 if ( sortRows === rows ) { return; }
@@ -249,18 +282,30 @@
                 var valueOrders = new Array(sortRows.length);
                 var columnOrders = new Array(sortRows.length);
 
-                sortRows.forEach(function(row, sortIndex){
 
-                    if ( Boolean(parseInt(row, 10)) && data[row] !== undefined) {
+                sortRows.forEach(function(row, sortIndex, sortArray){
+
+
+                    if ( _.isNumber(row) && data[row] !== undefined) {
                         rowData = data[row];
-                        cast = Number;
                     } else if (typeof(row) === 'string' && data[config.row_labels.indexOf(row)] !== undefined) {
                         rowData = data[config.row_labels.indexOf(row)];
-                        cast = String;
+                        sortArray[sortIndex] = config.row_labels.indexOf(row);
                     } else {
                         return;
                     }
-                    valueOrders[sortIndex] = _.chain(rowData)
+
+                    if (_.every(_.uniq(rowData), _.isNumber)){
+                        cast = Number;
+                    } else {
+                        cast = String;
+                    }
+                    
+                    if (config.value_order) {
+                        valueOrders[sortIndex] = _.intersection(config.value_order, _.uniq(rowData));
+                     } else { //order by largest number of values to smallest
+                        orderValuesFn = _.identity;
+                        valueOrders[sortIndex] = _.chain(rowData)
                                         .countBy(function(val) { return val;})
                                         .pairs()
                                         .map(function(arrVal){ return [cast.call(this, arrVal[0]), arrVal[1]]; })
@@ -268,40 +313,51 @@
                                         .map(function(arrVal) { return arrVal[0]; })
                                         .reverse()
                                         .value();
-                                        
-
+                    }
                     // columnOrders[sortIndex] = _.sortBy(columnOrder, function(colIndex) { return valueOrder.indexOf(rowData[colIndex]); } ).reverse();
                 });
+                var value;
+                var arrayPtr;
+                var subArray;
                 //hierarchical sort!
-                if (sortRows.length > 1) {
-                columnOrder = _.range(0, columnOrder.length).sort(function(indexA, indexB){
-                    for (var i =0; i < sortRows.length; i++) {
-                        var valA = valueOrders[i].indexOf(rowData[indexA]),
-                            valB = valueOrders[i].indexOf(rowData[indexB]);
-                        if ( valA === valB ) { continue; }
-                        return valA - valB;
-                    }
-                    return 0;
-                });
+                if ( sortRows.length > 1 ) {
+                    var row = data[sortRows[0]];
+                    var rowLength = row.length;
+                    //initialize root node to array for first value of first sort row
+                    var nestedOrder = [];
+                    
+                    _.each(_.range(0, rowLength), function( colIdx ){
+                        //reset pointer to top of tree
+                        arrayPtr = nestedOrder;
+                        
+                        //for each row to sort on
+                        _.each(_.range(0, sortRows.length), function( sortIdx ){
+                            //get sample value for currently sorting row
+                            value = data[sortRows[sortIdx]][colIdx];
+                            // get pointer to sorting branch (based on value)
+                            subArrayIndex = valueOrders[sortIdx].indexOf(value);
+                            //initialize sub array if necessary
+                            if (arrayPtr[subArrayIndex] === undefined) {
+                                arrayPtr[subArrayIndex] = [];
+                            }
+                            // point to correct subarray
+                            arrayPtr = arrayPtr[subArrayIndex];
+                            });
+                        //add the sample to the tree node
+                        arrayPtr.push(colIdx);
+                    });
+                    //flatten the tree to get global order
+                    columnOrder = _.flatten(nestedOrder, false);
                 } else {  //shortcut if only one row to sort on.
                     columnOrder = _.sortBy(columnOrder, function(colIndex) { return valueOrders[0].indexOf(rowData[colIndex]); } ).reverse();
                 }
 
+                // for the first specified grouping, 
+                groupMembership = data[sortRows[0]].map(function(val) { return valueOrders[0].indexOf(val); });
+
                 this.redraw();
 
-           },
-
-
-            plot_width: function () {
-                var columnCounts = _.map(config.columns_by_cluster, function (columns) {
-                    return columns.length;
-                });
-                var numberOfColumns = _.reduce(columnCounts, function (memo, num) {
-                    return memo + num;
-                }, 0);
-                // TODO : Determine plot and bar width based on a scale
-                return (config.bar_width * numberOfColumns);
-            }
+           }
         };
     };
 
