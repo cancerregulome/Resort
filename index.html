@@ -21,10 +21,13 @@
     <link rel="stylesheet" type="text/css" href="css/stacksvis.css"/>
 
     <script type="text/javascript">
+        var rows = 30;
+        var columns = 300;
+
         $(document).ready(function () {
-            createRows(20);
+            createRows(rows);
             activateVisControls();
-            loadTestData();
+            loadTestData(rows, columns);
             drawHeatmap();
         });
         var stacksvis;
@@ -72,7 +75,9 @@
                 "bar_height" : bar_height,
                 "bar_padding" : bar_padding,
                 "group_padding" : group_padding,
-                "row_selector" : ".s-row"
+                "row_selector" : ".s-row",
+
+                "enable_hover": true
             });
             $(".vis").on("render-dimensions", enableDraggable);
 
@@ -82,11 +87,9 @@
             
         };
 
-        loadTestData = function () {
-            var rows = 40;
-            var cols = 400;
+        loadTestData = function (rows, columns) {
             var doubledata = _.map(_.range(1, rows), function (i) {
-                return _.map(_.range(1, cols), function (i) {
+                return _.map(_.range(1, columns), function (i) {
                     return (Math.floor(Math.random() * 7) + 4);
                 });
             });
