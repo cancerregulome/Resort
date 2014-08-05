@@ -1,221 +1,252 @@
 <html>
-<head>
-    <link rel="stylesheet" type="text/css" href="http://informatics-apps.systemsbiology.net/bootstrap-2.0.4/css/bootstrap.min.css"/>
-    <link rel="stylesheet" type="text/css" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css"/>
 
+<head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
     <title>Heatmap</title>
 
-    <meta name="viewport" content="width=device-width">
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+
+    <link rel="stylesheet" type="text/css" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" />
+
+    <link rel="stylesheet" type="text/css" href="css/stacksvis.css" />
+
+</head>
+
+<body>
+
+    <div id="main-panel">
+        <div id="vis-panel">
+            <div class="vis"></div>
+        </div>
+        <div id="control-panel">
+            <h5>Row Height</h5>
+            <div class="slider-row-height"></div>
+
+            <h5>Column Width</h5>
+            <div class="slider-bar-width"></div>
+
+            <h5>Column Spacing</h5>
+            <div class="slider-column-spacing"></div>
+
+            <h5>Group Spacing</h5>
+            <div class="slider-group-spacing"></div>
+
+            <h5>Group-by Row Indices</h5>
+            <input type="text" id="group-by-list" placeholder="0, 1" value="0, 1">
+            <button class="btn btn-primary group-samples">Group Samples</button>
+        </div>
+        <div id="title-panel">
+            Stacks demo
+        </div>
+    </div>
+    <div id="data" class="well">
+        <form role="form">
+            <div class="form-group">
+                <label for="text_data"><b>(csv-format)</b></label>
+                <button class="btn btn-primary draw-heatmap">Shuffle</button>
+                <textarea id="text_data" rows="10" class="form-control"></textarea>
+            </div>
+        </form>
+        
+    </div>
 
     <script type="text/javascript" src="//code.jquery.com/jquery-2.1.1.js"></script>
     <script type="text/javascript" src="//code.jquery.com/ui/1.11.0/jquery-ui.js"></script>
-    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
-    <script type="text/javascript" src="http://informatics-apps.systemsbiology.net/bootstrap-2.1.1/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
-    <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 
+    <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
     <script type="text/javascript" src="js/stacksvis.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="css/stacksvis.css"/>
-
     <script type="text/javascript">
-        var rows = 30;
-        var columns = 300;
+    var rows = 20;
+    var columns = 100;
 
-        $(document).ready(function () {
-            createRows(rows);
-            activateVisControls();
-            loadTestData(rows, columns);
+    $(document).ready(function() {
+        createRows(rows);
+        activateVisControls();
+        loadTestData(rows, columns);
+        drawHeatmap();
+    });
+    var stacksvis;
+
+    var bar_padding = 0,
+        bar_height = 10,
+        bar_width = 8,
+        group_padding = 10;
+
+    drawHeatmap = function() {
+        var txt = $("#text_data").val();
+        var data = d3.csv.parseRows(txt, function(row) {
+            return _.map(row, parseFloat);
+        });
+
+        var rowlabels = _.map(_.range(0, data.length), function(i) {
+            return "Row_" + i;
+        });
+
+        var columnlabels = _.range(0, _.first(data).length);
+
+        rowlabels.unshift("EVEN_or_ODD");
+        data.unshift(_.map(columnlabels, function(label, idx) {
+            return (idx % 2 == 0) ? "EVEN" : "ODD";
+        }));
+
+
+        stacksvis = new Stacksvis({
+            "colormap": {
+                "EVEN": colorbrewer['Set3'][12][0],
+                "ODD": colorbrewer['Set3'][12][1],
+                "4": colorbrewer['Set3'][12][2],
+                "5": colorbrewer['Set3'][12][3],
+                "6": colorbrewer['Set3'][12][4],
+                "7": colorbrewer['Set3'][12][5],
+                "8": colorbrewer['Set3'][12][6],
+                "9": colorbrewer['Set3'][12][7],
+                "10": colorbrewer['Set3'][12][8]
+            },
+            "value_order": [4, 5, 6, 7, 8, 9, 10, "EVEN", "ODD"],
+            "row_labels": rowlabels,
+            "columns_by_cluster": columnlabels,
+            // "plot_width" : 400,
+            "bar_width": bar_width,
+            "bar_height": bar_height,
+            "bar_padding": bar_padding,
+            "group_padding": group_padding,
+            "row_selector": ".s-row",
+
+            "enable_hover": true
+        });
+        $(".vis").on("render-dimensions", enableDraggable);
+
+        var parentEl = d3.select('.vis').node();
+
+        stacksvis.draw(parentEl, data);
+
+    };
+
+    loadTestData = function(rows, columns) {
+        var doubledata = _.map(_.range(1, rows), function(i) {
+            return _.map(_.range(1, columns), function(i) {
+                return (Math.floor(Math.random() * 7) + 4);
+            });
+        });
+
+        var textdata = _.map(doubledata, function(doublerow) {
+            return doublerow.join(",");
+        });
+
+        $("#text_data").val(textdata.join("\n"));
+    };
+
+    activateVisControls = function() {
+        $(".group-samples").click(function() {
+            var rowList = $('#group-by-list').val();
+            if (rowList.length < 1) {
+                return;
+            }
+            var rowIndices = _.chain(rowList.split(','))
+                .invoke('trim')
+                .map(Number)
+                .filter(function(val) {
+                    return !_.isNaN(val);
+                })
+                .value();
+            stacksvis.groupByRows(rowIndices);
+        });
+        $(".draw-heatmap").click(function() {
             drawHeatmap();
         });
-        var stacksvis;
 
-        var bar_padding = 0,
-            bar_height = 10,
-            bar_width = 8,
-            group_padding = 10;
-
-        drawHeatmap = function () {
-            var txt = $("#text_data").val();
-            var data = d3.csv.parseRows(txt, function (row) {
-                return _.map(row, parseFloat);
-            });
-            
-            var rowlabels = _.map(_.range(0, data.length), function (i) {
-                return "Row_" + i;
-            });
-
-            var columnlabels = _.range(0, _.first(data).length);
-
-            rowlabels.unshift("EVEN_or_ODD");
-            data.unshift(_.map(columnlabels, function (label, idx) {
-                return (idx % 2 == 0) ? "EVEN" : "ODD";
-            }));
-
-
-            stacksvis = new Stacksvis({
-                "colormap" : {
-                    "EVEN" : colorbrewer['Set3'][12][0],
-                    "ODD" : colorbrewer['Set3'][12][1],
-                    "4" : colorbrewer['Set3'][12][2],
-                    "5" : colorbrewer['Set3'][12][3],
-                    "6" : colorbrewer['Set3'][12][4],
-                    "7" : colorbrewer['Set3'][12][5],
-                    "8" : colorbrewer['Set3'][12][6],
-                    "9" : colorbrewer['Set3'][12][7],
-                    "10" : colorbrewer['Set3'][12][8]
-                },
-                "value_order" : [4,5,6,7,8,9,10,"EVEN","ODD"],
-                "row_labels": rowlabels,
-                "columns_by_cluster" : columnlabels,
-                // "plot_width" : 400,
-                "bar_width" : bar_width,
-                "bar_height" : bar_height,
-                "bar_padding" : bar_padding,
-                "group_padding" : group_padding,
-                "row_selector" : ".s-row",
-
-                "enable_hover": true
-            });
-            $(".vis").on("render-dimensions", enableDraggable);
-
-            var parentEl = d3.select('.vis').node();
-            
-            stacksvis.draw(parentEl, data);
-            
-        };
-
-        loadTestData = function (rows, columns) {
-            var doubledata = _.map(_.range(1, rows), function (i) {
-                return _.map(_.range(1, columns), function (i) {
-                    return (Math.floor(Math.random() * 7) + 4);
+        $(".slider-row-height").slider({
+            value: bar_height,
+            min: 0,
+            max: 20,
+            slide: function(event, ui) {
+                stacksvis.setOptions({
+                    "bar_height": ui.value
                 });
-            });
+            }
+        });
+        $(".slider-bar-width").slider({
+            value: bar_width,
+            min: 0,
+            max: 15,
+            slide: function(event, ui) {
+                stacksvis.setOptions({
+                    "bar_width": ui.value
+                });
+            }
+        });
+        $(".slider-column-spacing").slider({
+            value: bar_padding,
+            min: 0,
+            max: 10,
+            slide: function(event, ui) {
+                stacksvis.setOptions({
+                    "bar_padding": ui.value
+                });
+            }
+        });
+        $(".slider-group-spacing").slider({
+            value: group_padding,
+            min: 0,
+            max: 30,
+            slide: function(event, ui) {
+                stacksvis.setOptions({
+                    "group_padding": ui.value
+                });
+            }
+        });
+    };
 
-            var textdata = _.map(doubledata, function (doublerow) {
-                return doublerow.join(",");
-            });
-
-            $("#text_data").val(textdata.join("\n"));
-        };
-
-        activateVisControls = function () {
-            $(".draw-heatmap").click(drawHeatmap);
-            $(".cluster-even-odd").click(function () {
-                var rowList = $('#group-by-list').val();
-                if (rowList.length < 1) { return; }
-                var rowIndices = _.chain(rowList.split(','))
-                                    .invoke('trim')
-                                    .map(Number)
-                                    .filter(function(val) { return !_.isNaN(val); })
-                                    .value();
-                stacksvis.groupByRows(rowIndices);
-            });
-            $(".draw-heatmap").click(function () {
-                $(".nav-tabs a:first").tab("show");
-            });
-
-            $(".slider-row-height").slider({ value: bar_height, min: 0, max: 100,
-                slide: function (event, ui) {
-                    stacksvis.setOptions({ "bar_height": ui.value });
-                }
-            });
-            $(".slider-bar-width").slider({ value: bar_width, min: 0, max: 100,
-                slide: function (event, ui) {
-                    stacksvis.setOptions({ "bar_width": ui.value });
-                }
-            });
-            $(".slider-column-spacing").slider({ value: bar_padding, min: 0, max: 100,
-                slide: function (event, ui) {
-                    stacksvis.setOptions({ "bar_padding": ui.value });
-                }
-            });
-            $(".slider-group-spacing").slider({ value: group_padding, min: 0, max: 100,
-                slide: function (event, ui) {
-                    stacksvis.setOptions({ "group_padding": ui.value });
-                }
-            });
-        };
-
-        createRows = function(number) {
+    createRows = function(number) {
 
         d3
             .select('.vis')
             .selectAll('.s-row')
             .data(_.range(number))
-        .enter()
-            .append('div').attr('class','s-row').style('color','#FFF');
+            .enter()
+            .append('div').attr('class', 's-row');
+    };
+
+    enableDraggable = function() {
+        var extractFn = function(x) {
+            return $(x).html();
         };
 
-        enableDraggable = function () {
-            var extractFn = function (x) {
-                return $(x).html();
-            };
+        $(".s-row li").disableSelection();
+        $(".s-row").sortable({
+            "revert": true,
+            "update": function() {
+                stacksvis.draw({
+                    "dimensions": {
+                        "row": _.map($(".s-row li"), extractFn)
+                    }
+                });
+            }
+        });
 
-            $(".s-row li").disableSelection();
-            $(".s-row").sortable({
-                "revert": true,
-                "update": function () {
-                    stacksvis.draw({ "dimensions": { "row": _.map($(".s-row li"), extractFn) } });
-                }
-            });
-
-            $(".s-column li").disableSelection();
-            $(".s-column").sortable({
-                "revert": true,
-                "update": function () {
-                    stacksvis.draw({ "dimensions": { "column": _.map($(".s-column li"), extractFn) } });
-                }
-            });
-        };
+        $(".s-column li").disableSelection();
+        $(".s-column").sortable({
+            "revert": true,
+            "update": function() {
+                stacksvis.draw({
+                    "dimensions": {
+                        "column": _.map($(".s-column li"), extractFn)
+                    }
+                });
+            }
+        });
+    };
     </script>
-</head>
-<body>
-<div class="">
-    <ul class="nav nav-tabs">
-        <li class="active"><a href="#tab-vis" data-toggle="tab">Heatmap</a></li>
-        <li><a href="#tab-data" data-toggle="tab">Input Data</a></li>
-    </ul>
-    <div class="tab-content">
-        <div id="tab-vis" class="tab-pane active">
-            <button class="btn btn-mini cluster-even-odd">Group Samples</button>
-            <button class="btn btn-mini" data-toggle="collapse" data-target="#enter-controls">Controls</button>
-
-            <div id="enter-controls" class="collapse">
-                <div class="well">
-                    <h5>Row Height</h5>
-
-                    <div class="slider-row-height"></div>
-
-                    <h5>Column Width</h5>
-
-                    <div class="slider-bar-width"></div>
-
-                    <h5>Column Spacing</h5>
-
-                    <div class="slider-column-spacing"></div>
-
-                    <h5>Group Spacing</h5>
-
-                    <div class="slider-group-spacing"></div>
-
-                    <h5>Group-by Row Indices</h5>
-
-                    <input type="text" id="group-by-list" placeholder="0, 1" value="0, 1">
-
-                </div>
-            </div>
-            <div class="row vis"></div>
-        </div>
-        <div id="tab-data" class="tab-pane well">
-            <label for="text_data"><b>(csv-format)</b></label>
-            <textarea id="text_data" rows="10" class="input-block-level"></textarea>
-            <button class="btn btn-mini draw-heatmap">Re-draw</button>
-        </div>
-    </div>
-</div>
-
 </body>
+
 </html>

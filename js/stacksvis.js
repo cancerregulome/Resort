@@ -249,13 +249,17 @@
 
                 var bar_padding = config.bar_padding || 0;
 
-                var groupPads = groupMembership.length - 1;
+                var group_padding = config.group_padding || 0;
+
+                var groupPads = groupExtents.length - 1;
+
+                var groupSpacing = isGrouped ? (groupPads * group_padding) : 0;
 
                 if (config.plot_width !== null) {
                     plotWidth = config.plot_width;
                     bar_width = (config.plot_width / rowData.length) - bar_padding - (group_padding * groupPads);
                 } else {
-                    plotWidth = (groupPads * group_padding) + ((bar_width + bar_padding) * rowData.length);
+                    plotWidth = groupSpacing + ((bar_width + bar_padding) * rowData.length);
                 }
 
                 var visEl = d3.select(this);
@@ -318,7 +322,7 @@
 
 
             var _setOptions = function(options) {
-                config = _.extend(config,options);
+                config = _.extend(config, options);
                 this.redraw();
             };
 
