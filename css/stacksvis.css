@@ -8,17 +8,21 @@
     -moz-transform: rotate(-90deg);
     -ms-transform: rotate(-90deg);
     -o-transform: rotate(-90deg);
-    font-size: 6;
+    font-size: 6px;
 }
 .s-row {
     margin-bottom: 8px;
 }
+
 #main-panel {
     margin: 20px;
 }
+
 #vis-panel {
     margin-left: 400px;
+    overflow: auto;
 }
+
 #control-panel {
     margin-top: 20px;
     margin-left: 25px;
