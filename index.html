@@ -48,8 +48,9 @@
     <div id="data" class="well">
         <form role="form">
             <div class="form-group">
-                <label for="text_data"><b>(csv-format)</b></label>
-                <button class="btn btn-primary draw-heatmap">Shuffle</button>
+                <label for="text_data"><b>Input Data (csv)</b></label>
+                <button class="btn btn-primary shuffle-data">Shuffle Data</button>
+                <button class="btn btn-primary draw-heatmap">Render</button>
                 <textarea id="text_data" rows="10" class="form-control"></textarea>
             </div>
         </form>
@@ -99,7 +100,6 @@
             return (idx % 2 == 0) ? "EVEN" : "ODD";
         }));
 
-
         stacksvis = new Stacksvis({
             "colormap": {
                 "EVEN": colorbrewer['Set3'][12][0],
@@ -115,16 +115,13 @@
             "value_order": [4, 5, 6, 7, 8, 9, 10, "EVEN", "ODD"],
             "row_labels": rowlabels,
             "columns_by_cluster": columnlabels,
-            // "plot_width" : 400,
             "bar_width": bar_width,
             "bar_height": bar_height,
             "bar_padding": bar_padding,
             "group_padding": group_padding,
             "row_selector": ".s-row",
-
             "enable_hover": true
         });
-        $(".vis").on("render-dimensions", enableDraggable);
 
         var parentEl = d3.select('.vis').node();
 
@@ -133,6 +130,7 @@
     };
 
     loadTestData = function(rows, columns) {
+        if  (!_.isFinite(rows) || !_.isFinite(columns) ) { return false;}
         var doubledata = _.map(_.range(1, rows), function(i) {
             return _.map(_.range(1, columns), function(i) {
                 return (Math.floor(Math.random() * 7) + 4);
@@ -144,6 +142,7 @@
         });
 
         $("#text_data").val(textdata.join("\n"));
+        return true;
     };
 
     activateVisControls = function() {
@@ -163,6 +162,12 @@
         });
         $(".draw-heatmap").click(function() {
             drawHeatmap();
+            return false;
+        });
+
+        $(".shuffle-data").click(function() {
+            loadTestData(rows, columns);
+            return false;
         });
 
         $(".slider-row-height").slider({
@@ -217,35 +222,6 @@
             .append('div').attr('class', 's-row');
     };
 
-    enableDraggable = function() {
-        var extractFn = function(x) {
-            return $(x).html();
-        };
-
-        $(".s-row li").disableSelection();
-        $(".s-row").sortable({
-            "revert": true,
-            "update": function() {
-                stacksvis.draw({
-                    "dimensions": {
-                        "row": _.map($(".s-row li"), extractFn)
-                    }
-                });
-            }
-        });
-
-        $(".s-column li").disableSelection();
-        $(".s-column").sortable({
-            "revert": true,
-            "update": function() {
-                stacksvis.draw({
-                    "dimensions": {
-                        "column": _.map($(".s-column li"), extractFn)
-                    }
-                });
-            }
-        });
-    };
     </script>
 </body>
 
