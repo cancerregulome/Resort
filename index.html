@@ -175,6 +175,7 @@
             min: 0,
             max: 20,
             slide: function(event, ui) {
+                bar_height = ui.value;
                 stacksvis.setOptions({
                     "bar_height": ui.value
                 });
@@ -185,6 +186,7 @@
             min: 0,
             max: 15,
             slide: function(event, ui) {
+                bar_width = ui.value;
                 stacksvis.setOptions({
                     "bar_width": ui.value
                 });
@@ -195,6 +197,7 @@
             min: 0,
             max: 10,
             slide: function(event, ui) {
+                bar_padding = ui.value;
                 stacksvis.setOptions({
                     "bar_padding": ui.value
                 });
@@ -205,6 +208,7 @@
             min: 0,
             max: 30,
             slide: function(event, ui) {
+                group_padding = ui.value;
                 stacksvis.setOptions({
                     "group_padding": ui.value
                 });
