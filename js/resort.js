@@ -9,12 +9,12 @@
         });
     } else {
         // RequireJS isn't being used. Assume underscore and d3 are loaded in <script> tags
-        this.Stacksvis = factory($, _, d3);
+        this.Resort = factory($, _, d3);
     }
 }(this, function ($, _, d3) {
     'strict mode';
 
-    var Stacksvis = function (options) {
+    var Resort = function (options) {
         var defaults = {
             bar_height: 20,
             bar_width: 0.5,
@@ -484,5 +484,5 @@
         };
     };
 
-    return Stacksvis;
+    return Resort;
 }));
