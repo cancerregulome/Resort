@@ -2,7 +2,7 @@
     border: 1px dashed black;
     padding: 30px;
 }
-.s-column li {
+.resort-column li {
     -transform: rotate(-90deg);
     -webkit-transform: rotate(-90deg);
     -moz-transform: rotate(-90deg);
@@ -10,8 +10,21 @@
     -o-transform: rotate(-90deg);
     font-size: 6px;
 }
-.s-row {
+
+.data-row {
+    overflow: hidden;
+    white-space: nowrap;
     margin-bottom: 8px;
+}
+
+.resort-row {    
+    display: inline-block;
+}
+
+.data-row .label {
+    display: inline-block;
+    color: #333;
+    width:100px;
 }
 
 #main-panel {

@@ -33,7 +33,7 @@
                 fill: "red"
             },
 
-            row_selector : '.s-row',
+            row_selector : '.resort-row',
             enable_select : false,
             enable_hover : false
         };
@@ -44,7 +44,8 @@
 
         var heatmapData = [];
         var parentEl;
-        var sortRows, columnOrder;
+        var sortRows = [],
+            columnOrder;
 
         var selectedColumns, highlightRegion;
         var colorscale_fn;
@@ -53,7 +54,11 @@
         var groupExtents = [];
         var isGrouped = false;
 
+        var valid_events = ['click', 'brush', 'hover'];
+        var events = {};
+
         function PrimitiveBrush(context) {
+            'strict mode';
             if (!(context instanceof CanvasRenderingContext2D)) {
                 throw new Error('No 2D rendering context given!');
             }
@@ -124,16 +129,13 @@
             this.ctx.filleStyle = "none";
 
             for(var j = startIndex; j < this.lastLength; j++){
-
-                var pt=this.workingStrokes[j];
-
+                var pt = this.workingStrokes[j];
                 this.ctx.strokeRect(pt0.x, -1,  pt.x - pt0.x, bar_height+1);
-
             }
 
         };
 
-        var initializeBrush = function (canvasSelection) {
+        function initializeBrush(canvasSelection) {
                // Set up brush to listen to events
             var canvas = d3.this(canvasSelection);
             var brush = new PrimitiveBrush(canvas.getContext('2d'));
@@ -142,7 +144,7 @@
             canvas.addEventListener('mousemove', brush.move.bind(brush));
             canvas.addEventListener('mouseup', brush.end.bind(brush));
 
-        };
+        }
 
         function getElementPosition(el) {
             var node = el.node();
@@ -153,14 +155,6 @@
                  lx += (node.offsetLeft || node.clientLeft), ly += (node.offsetTop || node.clientTop), node = (node.offsetParent || node.parentNode))
                 ;
             return {left: lx, top: ly, bottom: ly + config.bar_height, right: lx + plotWidth};
-        }
-
-        function orderIndexToValueIndex(orderIndex) {
-            return columnOrder.indexOf(orderIndex);
-        }
-
-        function valueIndexToSortedValue(valueIndex) {
-            return heatmapData[sortRows[0]][valueIndex];
         }
 
         function calculateGroupExtents() {
@@ -192,7 +186,17 @@
                 };
         }
 
-        var initializeHover = function (canvasSelection) {
+        function dispatch (event) {
+                var extra_args = Array.prototype.slice.call(arguments, 1);
+
+                if (event in events) {
+                    _.each(events[event], function(ev) {
+                        ev.apply(scope, extra_args);
+                    });
+                }
+        }
+
+        function initializeHover (canvasSelection) {
                // Set up hover listener
             canvasSelection.on('mouseover', function(data, idx) {
                 var canvas = d3.select(this);
@@ -200,27 +204,52 @@
                 var mouse = d3.mouse(this),
                     x = mouse[0],
                     y = mouse[1];
-              
-                console.log("Heatmap test mode:  Hover detected on group at location: " + JSON.stringify(getGroupBoundingBox(canvas, x)) );
+
+                var groupBoundingBox = getGroupBoundingBox(canvas, x);
+                dispatch('hover', groupBoundingBox);
 
             });
 
-        };
+        }
+
+        // calculate the screen position extents of each data grouping.
+
+        function setGroupExtents(sortRow, valueOrder) {
+
+                //  the first specified grouping, 
+                // maps natural data order to membership of first selected row
+                groupMembership = heatmapData[sortRow].map(function(val) { return valueOrder.indexOf(val); });
+                groupExtents = valueOrder.map(function(val, index) {
+                    return {
+                        index: index,
+                        value: val,
+                        start: null,
+                        end: null
+                    };
+                });
+        }
+
+        // creates an ordered list of columns from 0 to length(longest row)
+
+        function getDefaultColumnOrder() {
+            var longest = heatmapData.reduce(function(memo, row) { return _.max([memo, row.length]); }, 0);
+            return _.range(0, longest);
+        }
 
         //parameter: the raw value index, the ordered display index
         //returns screen position
 
-        var datapointToPosition = function( valueIndex, order ) {
+        function datapointToPosition( valueIndex, order ) {
             var position = (order * (config.bar_width + config.bar_padding));
             if ( groupMembership[valueIndex] ) {
                 position += ( groupMembership[valueIndex] * config.group_padding );
             }
             return position;
-        };
+        }
 
         //returns datapoint index
 
-        var positionToDatapointIndex = function( position ) {
+        function positionToDatapointIndex( position ) {
             var orderIndex = position;
             if (isGrouped) {
                 var group = positionToGroup(position);
@@ -230,19 +259,19 @@
             }
             orderIndex = orderIndex / (bar_width + bar_padding);
             return Math.floor(orderIndex);
-        };
+        }
 
         //returns group object or null
 
-        var positionToGroup = function( position ) {
+        function positionToGroup ( position ) {
             var group = null;
             if (isGrouped) {
                 group = groupExtents.filter(function(extent) { return extent.start <= position && extent.end >= position;})[0];
             }
             return group;
-        };
+        }
 
-        var drawRow = function (data, idx) {
+        function drawRow (data, idx) {
                 
                 var bar_width = config.bar_width;
                 var rowData = data || [];
@@ -280,7 +309,7 @@
                 var extraPosition = columnOrder.length;
 
                 d3.timer( function() {
-                    _.forEach(columnOrder, function(valueIndex, order, array) {
+                    _.each(columnOrder, function(valueIndex, order, array) {
                         context.fillStyle = colorscale_fn( data[valueIndex] );
                         context.fillRect( datapointToPosition(valueIndex, order), 0, bar_width, config.bar_height );
                     }, this);
@@ -294,15 +323,15 @@
                     canvasSelection.call(initializeHover);
                 }
 
-            };
+            }
 
-            var globallyUniqueValues = function(matrix) {
+            function globallyUniqueValues(matrix) {
                 return _.reduce(matrix, function(previous, current){
                     return _.union(previous, _.uniq(current));
                 }, []);
-            };
+            }
 
-            var get_colorscale_fn = function (matrix) {
+            function get_colorscale_fn (matrix) {
                 var colorscaleFn;
                 if (config.colormap) {
                     colorscaleFn = d3.scale.ordinal().domain(_.keys(config.colormap)).range(_.values(config.colormap));
@@ -318,13 +347,22 @@
                 return function (val) {
                     return colorscaleFn(val);
                 };
-            };
+            }
 
+            function resolveRowIndex(rowIdentifier) {
+                var rowIndex = null;
+                if (_.isFinite(rowIdentifier) && heatmapData[rowIdentifier] !== undefined) {
+                    return rowIdentifier;
+                } else if (_.isString(rowIdentifier) && (rowIndex = config.row_labels.indexOf(rowIdentifier) ) >= 0 ) {
+                    return rowIndex;
+                }
+                return rowIndex;
+            }
 
-            var _setOptions = function(options) {
+            function _setOptions (options) {
                 config = _.extend(config, options);
                 this.redraw();
-            };
+            }
 
         return {
             // data: [],
@@ -351,8 +389,7 @@
                     colorscale_fn = get_colorscale_fn(heatmapData);
                 }
 
-                var longest = heatmapData.reduce(function(memo, row) { return _.max([memo, row.length]); }, 0);
-                columnOrder =  columnOrder || _.range(0, longest);
+                columnOrder =  columnOrder || getDefaultColumnOrder();
 
                 var rows = parentEl
                         .selectAll(config.row_selector)
@@ -383,98 +420,167 @@
 
             setOptions : _.throttle(_setOptions, 40),
 
-            groupByRows: function(rows) {
-                
-                var rowData, values,
-                    cast = String;
-                if ( sortRows === rows ) { return; }
-                
-                sortRows = rows;
-
-                var valueOrders = new Array(sortRows.length);
-
-                sortRows.forEach(function(row, sortIndex, sortArray){
-
-                    if ( _.isNumber(row) && heatmapData[row] !== undefined) {
-                        rowData = heatmapData[row];
-                    } else if (typeof(row) === 'string' && heatmapData[config.row_labels.indexOf(row)] !== undefined) {
-                        rowData = heatmapData[config.row_labels.indexOf(row)];
-                        sortArray[sortIndex] = config.row_labels.indexOf(row);
-                    } else {
-                        return;
-                    }
-
-                    if (_.every(_.uniq(rowData), _.isNumber)){
-                        cast = Number;
-                    } else {
-                        cast = String;
-                    }
-                    
-                    if (config.value_order) {
-                        valueOrders[sortIndex] = _.intersection(config.value_order, _.uniq(rowData));
-                     } else { //order by largest number of values to smallest
-                        orderValuesFn = _.identity;
-                        valueOrders[sortIndex] = _.chain(rowData)
-                                        .countBy(function(val) { return val;})
-                                        .pairs()
-                                        .map(function(arrVal){ return [cast.call(this, arrVal[0]), arrVal[1]]; })
-                                        .sortBy(function(arrVal) { return arrVal[1]; })
-                                        .map(function(arrVal) { return arrVal[0]; })
-                                        .reverse()
-                                        .value();
-                    }
-                });
-
-                var value;
-                var arrayPtr;
-                var subArray;
-                //hierarchical sort!
-                if ( sortRows.length > 1 ) {
-                    var row = heatmapData[sortRows[0]];
-                    var rowLength = row.length;
-                    //initialize root node to array for first value of first sort row
-                    var nestedOrder = [];
-                    
-                    _.each(_.range(0, rowLength), function( colIdx ){
-                        //reset pointer to top of tree
-                        arrayPtr = nestedOrder;
-                        
-                        //for each row to sort on
-                        _.each(_.range(0, sortRows.length), function( sortIdx ){
-                            //get sample value for currently sorting row
-                            value = heatmapData[sortRows[sortIdx]][colIdx];
-                            // get pointer to sorting branch (based on value)
-                            subArrayIndex = valueOrders[sortIdx].indexOf(value);
-                            //initialize sub array if necessary
-                            if (arrayPtr[subArrayIndex] === undefined) {
-                                arrayPtr[subArrayIndex] = [];
-                            }
-                            // point to correct subarray
-                            arrayPtr = arrayPtr[subArrayIndex];
-                            });
-                        //add the sample to the tree node
-                        arrayPtr.push(colIdx);
-                    });
-                    //flatten the tree to get global order
-                    columnOrder = _.flatten(nestedOrder, false);
-                } else {  //shortcut if only one row to sort on.
-                    columnOrder = _.sortBy(columnOrder, function(colIndex) {
-                            return valueOrders[0].indexOf( rowData[colIndex] );
-                        }
-                    ).reverse();
+            on: function(event, fn, scope) {
+                var fn_scoped = fn;
+                if (scope) { 
+                    fn_scoped = fn.bind(scope);
                 }
 
-                // for the first specified grouping, 
-                // maps natural data order to membership of first selected row
-                groupMembership = heatmapData[sortRows[0]].map(function(val) { return valueOrders[0].indexOf(val); });
-                groupExtents = valueOrders[0].map(function(val, index) {
-                    return {
-                        index: index,
-                        value: val,
-                        start: null,
-                        end: null
-                    };
+                if (event in valid_events) {
+                    console.warn('Resort: unexpected event type requested: ' + event);
+                    return false;
+                }
+                if (!(event in events) ){
+                    events[event] = [];
+                }
+
+                events[event].push(fn_scoped);
+                return true;
+            },
+
+            off: function(event, fn) {
+                if (event in events && fn in events[event]) {
+                    var ev = event[events];
+                    events[event] = ev.slice(0, i=ev.indexOf(fn)).concat(ev.slice(i +  1));
+                }
+            },
+
+            // group Values By the Row
+            // parameters
+            // row : integer or String.  Indexes the row in the data matrix
+            // sortIndex : the index of the sort rows
+            valueOrder: function(row, sortIndex) {
+                var rowData, values, rowIndex;
+                    cast = String;
+
+                var sortRowNumber = sortIndex || 0;
+
+               rowIndex = resolveRowIndex(row);
+               
+               if (rowIndex >= 0) {
+                    rowData = heatmapData[rowIndex];
+                    if (sortRows.length) {
+                        sortRows[sortRowNumber] = rowIndex;
+                    } else {
+                        sortRows.push(rowIndex);
+                    }
+                } else {
+                    console.warn('Resort.valueOrder: Could not find data row to sort on.');
+                    return;
+                }
+
+                var uniqueData = _.uniq(rowData)
+                    
+                if (_.every(uniqueData, _.isNumber)){
+                    cast = Number;
+                } else {
+                    cast = String;
+                }
+                
+                if (config.value_order) {
+
+                    return _.chain(uniqueData)
+                                    .intersection(config.value_order, uniqueData)
+                                    .sortBy( function(val) { return config.value_order.indexOf(val); })
+                                    .value();
+
+                 } else { //order by largest number of values to smallest
+                    return _.chain(rowData)
+                                    .countBy(function(val) { return val;})
+                                    .pairs()
+                                    .map(function(arrVal){ return [cast.call(this, arrVal[0]), arrVal[1]]; })
+                                    .sortBy(function(arrVal) { return arrVal[1]; })
+                                    .map(function(arrVal) { return arrVal[0]; })
+                                    .reverse()
+                                    .value();
+                }
+
+            },
+
+            groupByRow: function(rowToGroupOn) {
+
+                var rowArray = rowToGroupOn;
+
+                if ( !_.isArray(rowToGroupOn) ) {
+                    rowArray = [rowToGroupOn];
+                }
+
+                rowArray = rowArray.map(resolveRowIndex);
+
+                if ( _.isEqual(sortRows, rowArray) ) { return; }
+                
+                sortRows = rowArray;
+
+                var valueOrders = sortRows.map( this.valueOrder.bind(this) );
+
+                var rowData = heatmapData[sortRows[0]];
+                
+                columnOrder = _.sortBy(getDefaultColumnOrder(), function(colIndex) {
+                            return valueOrders[0].indexOf( rowData[colIndex] );
+                        });
+
+                setGroupExtents(sortRows[0], valueOrders[0]);
+                
+                isGrouped = true;
+
+                this.redraw();
+
+            },
+
+            groupByRows: function(rowsToGroupOn) {
+
+                if (rowsToGroupOn === undefined || !_.isArray(rowsToGroupOn) || rowsToGroupOn.length < 1) { 
+                    console.warn('Resort.groupByRows expects an array of row indices or labels.'); 
+                    return;
+                }
+
+                if (rowsToGroupOn.length === 1) { 
+                    this.groupByRow(rowsToGroupOn);
+                    return;
+                }
+
+                var rowArray = rowsToGroupOn.map(resolveRowIndex);
+                
+                if ( _.isEqual(sortRows, rowArray) ) { return; }
+                
+                //update closure variable
+                sortRows = rowsToGroupOn;
+
+                var valueOrders = sortRows.map( this.valueOrder.bind(this) );
+
+                var value, arrayPtr;
+                var subArrayIndex;
+
+                //hierarchical sort!
+                var rowLength = row.length;
+                //initialize root node to array for first value of first sort row
+                var nestedOrder = [];
+                
+                _.each(_.range(0, rowLength), function( colIdx ) {
+                    //reset pointer to top of tree
+                    arrayPtr = nestedOrder;
+                    
+                    //for each row to sort on
+                    _.each(_.range(0, sortRows.length), function( sortIdx ) {
+                        //get sample value for currently sorting row
+                        value = heatmapData[sortRows[sortIdx]][colIdx];
+                        // get pointer to sorting branch (based on value)
+                        subArrayIndex = valueOrders[sortIdx].indexOf(value);
+                        //initialize sub array if necessary
+                        if (arrayPtr[subArrayIndex] === undefined) {
+                            arrayPtr[subArrayIndex] = [];
+                        }
+                        // point to correct subarray
+                        arrayPtr = arrayPtr[subArrayIndex];
+                        });
+                    //add the sample to the tree node
+                    arrayPtr.push(colIdx);
                 });
+
+                //flatten the tree to get global order
+                columnOrder = _.flatten(nestedOrder, false);
+
+                setGroupExtents(sortRows[0], valueOrders[0]);
                 
                 isGrouped = true;
 
