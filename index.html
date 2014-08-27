@@ -43,15 +43,23 @@
         </div>
         <div id="title-panel">
             Stacks demo
+            <br>
+            <button class="btn btn-primary draw-heatmap">Render</button>
         </div>
+
     </div>
     <div id="data" class="well">
         <form role="form">
             <div class="form-group">
                 <label for="text_data"><b>Input Data (csv)</b>
                 </label>
-                <button class="btn btn-primary shuffle-data">Shuffle Data</button>
-                <button class="btn btn-primary draw-heatmap">Render</button>
+                <br>
+                <label>Rows:</label>
+                <input type="text" id="number-of-rows" placeholder="Number of Rows" value="20">
+                <label>Columns:</label>
+                <input type="text" id="number-of-columns" placeholder="Number of Columns" value="100">                
+                <button class="btn btn-primary shuffle-data">Recreate Data</button>
+                <br>
                 <textarea id="text_data" rows="10" class="form-control"></textarea>
             </div>
         </form>
@@ -72,10 +80,14 @@
     var columns = 100;
 
     $(document).ready(function() {
-        createRows(rows);
+        
         activateVisControls();
-        loadTestData(rows, columns);
-        drawHeatmap();
+        createTestData(rows, columns);
+        var data = getTextAreaData();
+        var rowLabels = getLabels(data);
+        var heatmapData = getDataRows(data);
+        createRows(rowLabels);
+        drawHeatmap(rowLabels, heatmapData);
     });
     var resort;
 
@@ -84,22 +96,47 @@
         bar_width = 8,
         group_padding = 10;
 
-    drawHeatmap = function() {
-        var txt = $("#text_data").val();
-        var data = d3.csv.parseRows(txt, function(row) {
-            return _.map(row, parseFloat);
-        });
+    function appendRowLabelElements() {
+        d3.selectAll('.data-row .label')
+        .append('a')
+        .attr('href','#')
+        .on('click', function(val) {
+            resort.groupByRow(val);
+            return false;
+        })
+        .html(function(val) { return val; })
+    };
 
-        var rowlabels = _.map(_.range(0, data.length), function(i) {
-            return "Row_" + i;
-        });
-
-        var columnlabels = _.range(0, _.first(data).length);
-
-        rowlabels.unshift("EVEN_or_ODD");
-        data.unshift(_.map(columnlabels, function(label, idx) {
-            return (idx % 2 == 0) ? "EVEN" : "ODD";
+    function createEvenOddRow(rowLength) {
+        return ["EVEN_or_ODD"].concat(_.map(_.range(0,rowLength), function(val) {
+            return (val % 2 == 0) ? "EVEN" : "ODD";
         }));
+    };
+
+    function getDataRows(data) {
+       return data.map(function(row) {
+            return row.slice(1);
+        });       
+    }
+
+    function getLabels(data) {
+        return  data.map(function(row) {
+            return row[0];
+        });
+    }
+
+    function getTextAreaData() {
+        var txt = $("#text_data").val();
+        return d3.csv.parseRows(txt, function(row) {
+            return _.map(row, function(val) { 
+                return _.isFinite(val) ? parseFloat(val) : val;
+            });
+        });
+    }
+
+    function drawHeatmap(rowlabels, heatmapData) {
+
+        var columnlabels = _.range(0, _.first(heatmapData).length + 1);
 
         resort = new Resort({
             "colormap": {
@@ -120,25 +157,29 @@
             "bar_height": bar_height,
             "bar_padding": bar_padding,
             "group_padding": group_padding,
-            "row_selector": ".s-row",
+            "row_selector": ".resort-row",
             "enable_hover": true
         });
 
         var parentEl = d3.select('.vis').node();
 
-        resort.draw(parentEl, data);
+        resort.draw(parentEl, heatmapData);
 
-    };
+    }
 
-    loadTestData = function(rows, columns) {
+    function createTestData(rows, columns) {
         if (!_.isFinite(rows) || !_.isFinite(columns)) {
             return false;
         }
+
         var doubledata = _.map(_.range(1, rows), function(i) {
-            return _.map(_.range(1, columns), function(i) {
-                return (Math.floor(Math.random() * 7) + 4);
-            });
+            return ["Row_" + i].concat( 
+                _.map(_.range(0, columns), function() {
+                    return (Math.floor(Math.random() * 7) + 4);
+                }));
         });
+
+        doubledata.unshift(createEvenOddRow(columns));
 
         var textdata = _.map(doubledata, function(doublerow) {
             return doublerow.join(",");
@@ -148,7 +189,7 @@
         return true;
     };
 
-    activateVisControls = function() {
+    function activateVisControls() {
         $(".group-samples").click(function() {
             var rowList = $('#group-by-list').val();
             if (rowList.length < 1) {
@@ -164,12 +205,22 @@
             resort.groupByRows(rowIndices);
         });
         $(".draw-heatmap").click(function() {
-            drawHeatmap();
+            var data = getTextAreaData();
+            var rowLabels = getLabels(data);
+            var heatmapData = getDataRows(data);
+            drawHeatmap(rowLabels, heatmapData);
             return false;
         });
 
         $(".shuffle-data").click(function() {
-            loadTestData(rows, columns);
+            var rowsString = $('#number-of-rows').val();
+            colsString = $('#number-of-columns').val();
+            rows = parseInt(rowsString, 10),
+            cols = parseInt(colsString, 10);
+
+            if (_.isFinite(rows) && _.isFinite(cols)) {
+                createTestData(rows, cols);
+            }
             return false;
         });
 
@@ -219,15 +270,21 @@
         });
     };
 
-    createRows = function(number) {
+    function createRows(rows) {
 
-        d3
+        var resortRows = d3
             .select('.vis')
-            .selectAll('.s-row')
-            .data(_.range(number))
+            .selectAll('.data-row')
+            .data(rows)
             .enter()
-            .append('div').attr('class', 's-row');
-    };
+            .append('div').attr('class', 'data-row');
+        
+        resortRows.append('div').attr('class','label');
+        resortRows.append('div').attr('class','resort-row');
+
+        appendRowLabelElements();
+    }
+     
     </script>
 </body>
 
