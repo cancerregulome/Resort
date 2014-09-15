@@ -476,7 +476,7 @@
                     }
                 } else {
                     console.warn('Resort.valueOrder: Could not find data row to sort on.');
-                    return;
+                    return [];
                 }
 
                 var uniqueData = _.uniq(rowData)
@@ -553,8 +553,9 @@
                 
                 if ( _.isEqual(sortRows, rowArray) ) { return; }
                 
-                //update closure variable
+                //update global closure variable.  array of row indices to sort/group on
                 sortRows = rowsToGroupOn;
+
 
                 var valueOrders = sortRows.map( this.valueOrder.bind(this) );
 
@@ -562,7 +563,7 @@
                 var subArrayIndex;
 
                 //hierarchical sort!
-                var rowLength = row.length;
+                var rowLength = heatmapData[0].length;
                 //initialize root node to array for first value of first sort row
                 var nestedOrder = [];
                 
