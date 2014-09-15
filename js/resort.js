@@ -349,6 +349,13 @@
                 };
             }
 
+
+            /* resolveRowIndex
+               translates a generic row identifier (index or label) into the row index
+               input: rowIdentifier (String or Number) : uniquely identifies a row of the data
+                output: Number, index of row data.  null if identifier is invalid.
+            */
+
             function resolveRowIndex(rowIdentifier) {
                 var rowIndex = null;
                 if (_.isFinite(rowIdentifier) && heatmapData[rowIdentifier] !== undefined) {
@@ -449,6 +456,9 @@
             // parameters
             // row : integer or String.  Indexes the row in the data matrix
             // sortIndex : the index of the sort rows
+            // returns
+            //  empty array if row cannot be sorted
+            //  array of data indices in sorted order
             valueOrder: function(row, sortIndex) {
                 var rowData, values, rowIndex;
                     cast = String;
