@@ -1,17 +1,17 @@
 (function (root, factory) {
     if (typeof exports === 'object' && root.require) {
-        module.exports = factory(require("jquery"), require("underscore"), require("d3"));
+        module.exports = factory(require("underscore"), require("d3"));
     } else if (typeof define === "function" && define.amd) {
         // AMD. Register as an anonymous module.
-        define(["jquery", "underscore", "d3"], function ($, _, d3) {
+        define(["underscore", "d3"], function (_, d3) {
             // Use global variables if the locals are undefined.
-            return factory($ || root.$, _ || root._, d3 || root.d3);
+            return factory(_ || root._, d3 || root.d3);
         });
     } else {
         // RequireJS isn't being used. Assume underscore and d3 are loaded in <script> tags
-        this.Resort = factory($, _, d3);
+        this.Resort = factory(_, d3);
     }
-}(this, function ($, _, d3) {
+}(this, function (_, d3) {
     'strict mode';
 
     var Resort = function (options) {
