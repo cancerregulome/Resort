@@ -152,7 +152,7 @@
             },
             "value_order": [4, 5, 6, 7, 8, 9, 10, "EVEN", "ODD"],
             "row_labels": rowlabels,
-            "columns_by_cluster": columnlabels,
+            "column_labels": columnlabels,
             "bar_width": bar_width,
             "bar_height": bar_height,
             "bar_padding": bar_padding,
@@ -224,13 +224,17 @@
             return false;
         });
 
+        var setOptions = _.throttle(function(object) {
+            resort.setOptions(object);
+        }, 40);
+
         $(".slider-row-height").slider({
             value: bar_height,
             min: 0,
             max: 20,
             slide: function(event, ui) {
                 bar_height = ui.value;
-                resort.setOptions({
+                setOptions({
                     "bar_height": ui.value
                 });
             }
@@ -241,7 +245,7 @@
             max: 15,
             slide: function(event, ui) {
                 bar_width = ui.value;
-                resort.setOptions({
+                setOptions({
                     "bar_width": ui.value
                 });
             }
@@ -252,7 +256,7 @@
             max: 10,
             slide: function(event, ui) {
                 bar_padding = ui.value;
-                resort.setOptions({
+                setOptions({
                     "bar_padding": ui.value
                 });
             }
@@ -263,7 +267,7 @@
             max: 30,
             slide: function(event, ui) {
                 group_padding = ui.value;
-                resort.setOptions({
+                setOptions({
                     "group_padding": ui.value
                 });
             }
