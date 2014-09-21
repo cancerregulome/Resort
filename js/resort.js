@@ -372,8 +372,6 @@
             }
 
         return {
-            // data: [],
-            // columns_by_groups: {},
 
             draw : function(el, matrix) {
                 var self = this;
@@ -425,7 +423,7 @@
                 this.draw();
             },
 
-            setOptions : _.throttle(_setOptions, 40),
+            setOptions : _setOptions, 
 
             on: function(event, fn, scope) {
                 var fn_scoped = fn;
