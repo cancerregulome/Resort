@@ -1,17 +1,17 @@
 (function (root, factory) {
     if (typeof exports === 'object' && root.require) {
-        module.exports = factory(require("jquery"), require("underscore"), require("d3"));
+        module.exports = factory(require("underscore"), require("d3"));
     } else if (typeof define === "function" && define.amd) {
         // AMD. Register as an anonymous module.
-        define(["jquery", "underscore", "d3"], function ($, _, d3) {
+        define(["underscore", "d3"], function (_, d3) {
             // Use global variables if the locals are undefined.
-            return factory($ || root.$, _ || root._, d3 || root.d3);
+            return factory(_ || root._, d3 || root.d3);
         });
     } else {
         // RequireJS isn't being used. Assume underscore and d3 are loaded in <script> tags
-        this.Resort = factory($, _, d3);
+        this.Resort = factory(_, d3);
     }
-}(this, function ($, _, d3) {
+}(this, function (_, d3) {
     'strict mode';
 
     var Resort = function (options) {
@@ -349,6 +349,13 @@
                 };
             }
 
+
+            /* resolveRowIndex
+               translates a generic row identifier (index or label) into the row index
+               input: rowIdentifier (String or Number) : uniquely identifies a row of the data
+                output: Number, index of row data.  null if identifier is invalid.
+            */
+
             function resolveRowIndex(rowIdentifier) {
                 var rowIndex = null;
                 if (_.isFinite(rowIdentifier) && heatmapData[rowIdentifier] !== undefined) {
@@ -365,8 +372,6 @@
             }
 
         return {
-            // data: [],
-            // columns_by_groups: {},
 
             draw : function(el, matrix) {
                 var self = this;
@@ -418,7 +423,7 @@
                 this.draw();
             },
 
-            setOptions : _.throttle(_setOptions, 40),
+            setOptions : _setOptions, 
 
             on: function(event, fn, scope) {
                 var fn_scoped = fn;
@@ -449,6 +454,9 @@
             // parameters
             // row : integer or String.  Indexes the row in the data matrix
             // sortIndex : the index of the sort rows
+            // returns
+            //  empty array if row cannot be sorted
+            //  array of data indices in sorted order
             valueOrder: function(row, sortIndex) {
                 var rowData, values, rowIndex;
                     cast = String;
@@ -466,7 +474,7 @@
                     }
                 } else {
                     console.warn('Resort.valueOrder: Could not find data row to sort on.');
-                    return;
+                    return [];
                 }
 
                 var uniqueData = _.uniq(rowData)
@@ -543,8 +551,9 @@
                 
                 if ( _.isEqual(sortRows, rowArray) ) { return; }
                 
-                //update closure variable
+                //update global closure variable.  array of row indices to sort/group on
                 sortRows = rowsToGroupOn;
+
 
                 var valueOrders = sortRows.map( this.valueOrder.bind(this) );
 
@@ -552,7 +561,7 @@
                 var subArrayIndex;
 
                 //hierarchical sort!
-                var rowLength = row.length;
+                var rowLength = heatmapData[0].length;
                 //initialize root node to array for first value of first sort row
                 var nestedOrder = [];
                 

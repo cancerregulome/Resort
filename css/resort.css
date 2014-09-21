@@ -1,18 +1,10 @@
 .vis {
     border: 1px dashed black;
     padding: 30px;
-}
-.resort-column li {
-    -transform: rotate(-90deg);
-    -webkit-transform: rotate(-90deg);
-    -moz-transform: rotate(-90deg);
-    -ms-transform: rotate(-90deg);
-    -o-transform: rotate(-90deg);
-    font-size: 6px;
+    overflow-x: auto;
 }
 
 .data-row {
-    overflow: hidden;
     white-space: nowrap;
     margin-bottom: 8px;
 }
@@ -33,7 +25,6 @@
 
 #vis-panel {
     margin-left: 400px;
-    overflow: auto;
 }
 
 #control-panel {
